@@ -46,7 +46,7 @@ type Agent struct {
 	pollCount int
 }
 
-func (a *Agent) Run() error {
+func (a *Agent) Run() {
 	go func() {
 		for {
 			runtime.ReadMemStats(a.memStats)
@@ -57,7 +57,6 @@ func (a *Agent) Run() error {
 		time.Sleep(10 * time.Second)
 		a.collectMetrics()
 	}
-	return nil
 }
 
 func (a *Agent) collectMetrics() {
