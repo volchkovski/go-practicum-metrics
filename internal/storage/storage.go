@@ -10,6 +10,19 @@ type Storage interface {
 	WriteCounter(string, int64) error
 }
 
+type MemStorage struct {
+	GS *GaugeStorage
+	CS *CounterStorage
+}
+
+type GaugeStorage struct {
+	Gauges map[string]float64
+}
+
+type CounterStorage struct {
+	Counters map[string]int64
+}
+
 func (s *MemStorage) WriteGauge(name string, value float64) error {
 	s.GS.Gauges[name] = value
 	return nil

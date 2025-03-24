@@ -1,4 +1,4 @@
-package collector
+package server
 
 import (
 	"github.com/volchkovski/go-practicum-metrics/internal/handlers"
@@ -6,21 +6,21 @@ import (
 	"net/http"
 )
 
-type Collector struct {
+type Server struct {
 	mux *http.ServeMux
 	s   storage.Storage
 }
 
-func (c Collector) Run() error {
-	if err := http.ListenAndServe(`:8080`, c.mux); err != nil {
+func (s *Server) Run() error {
+	if err := http.ListenAndServe(`:8080`, s.mux); err != nil {
 		return err
 	}
 	return nil
 }
 
-func New() Collector {
+func New() *Server {
 	mux := http.NewServeMux()
 	s := storage.NewMemStorage()
-	mux.Handle(`/update/`, handlers.CollectMetricHandler(s))
-	return Collector{mux, s}
+	mux.HandleFunc(`/update/`, handlers.CollectMetricHandler(s))
+	return &Server{mux, s}
 }

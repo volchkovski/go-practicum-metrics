@@ -1,12 +1,11 @@
 package main
 
 import (
-	"github.com/volchkovski/go-practicum-metrics/internal/collector"
+	"github.com/volchkovski/go-practicum-metrics/internal/server"
+	"log"
 )
 
 func main() {
-	c := collector.New()
-	if err := c.Run(); err != nil {
-		panic(err)
-	}
+	s := server.New()
+	log.Fatal(s.Run())
 }
