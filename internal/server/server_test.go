@@ -81,7 +81,7 @@ func TestRouter(t *testing.T) {
 			expected: expected{
 				contentType: "text/plain; charset=utf-8",
 				status:      http.StatusOK,
-				body:        "Metric: known Value: 1.00",
+				body:        "1.000",
 			},
 		},
 		{
@@ -91,7 +91,7 @@ func TestRouter(t *testing.T) {
 			expected: expected{
 				contentType: "text/plain; charset=utf-8",
 				status:      http.StatusOK,
-				body:        "Metric: known Value: 1",
+				body:        "1",
 			},
 		},
 		{
@@ -121,6 +121,7 @@ func TestRouter(t *testing.T) {
 			expected: expected{
 				contentType: "text/plain; charset=utf-8",
 				status:      http.StatusBadRequest,
+				body:        "",
 			},
 		},
 		{
@@ -130,6 +131,7 @@ func TestRouter(t *testing.T) {
 			expected: expected{
 				contentType: "text/plain; charset=utf-8",
 				status:      http.StatusBadRequest,
+				body:        "",
 			},
 		},
 		{
@@ -146,6 +148,7 @@ func TestRouter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, tt.method, tt.path)
+			defer resp.Body.Close()
 			assert.Equal(t, tt.expected.contentType, resp.Header.Get("Content-Type"))
 			assert.Equal(t, tt.expected.status, resp.StatusCode)
 			if tt.expected.body != "" {
