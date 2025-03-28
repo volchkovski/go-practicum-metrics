@@ -1,45 +1,49 @@
 package storage
 
-const (
-	Gauge   = "gauge"
-	Counter = "counter"
+import (
+	"fmt"
 )
 
-type Storage interface {
-	WriteGauge(string, float64) error
-	WriteCounter(string, int64) error
-}
-
 type MemStorage struct {
-	GS *GaugeStorage
-	CS *CounterStorage
-}
-
-type GaugeStorage struct {
-	Gauges map[string]float64
-}
-
-type CounterStorage struct {
-	Counters map[string]int64
+	gauges   map[string]float64
+	counters map[string]int64
 }
 
 func (s *MemStorage) WriteGauge(name string, value float64) error {
-	s.GS.Gauges[name] = value
+	s.gauges[name] = value
 	return nil
 }
 
 func (s *MemStorage) WriteCounter(name string, value int64) error {
-	s.CS.Counters[name] += value
+	s.counters[name] += value
 	return nil
+}
+
+func (s *MemStorage) ReadGauge(name string) (float64, error) {
+	if m, ok := s.gauges[name]; ok {
+		return m, nil
+	}
+	return 0, fmt.Errorf("%s not found", name)
+}
+
+func (s *MemStorage) ReadCounter(name string) (int64, error) {
+	if m, ok := s.counters[name]; ok {
+		return m, nil
+	}
+	return 0, fmt.Errorf("%s not found", name)
+}
+
+func (s *MemStorage) ReadAllGauges() map[string]float64 {
+	return s.gauges
+}
+
+func (s *MemStorage) ReadAllCounters() map[string]int64 {
+	return s.counters
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		GS: &GaugeStorage{
-			Gauges: map[string]float64{},
-		},
-		CS: &CounterStorage{
-			Counters: map[string]int64{},
-		},
+		gauges:   map[string]float64{},
+		counters: map[string]int64{},
 	}
 }
