@@ -79,7 +79,7 @@ func (a *Agent) collectMetrics() {
 }
 
 func (a *Agent) postMetric(tp, nm string, val any) error {
-	urlTemplate := a.serverAddr + "/update/%s/%s/%v"
+	urlTemplate := "http://" + a.serverAddr + "/update/%s/%s/%v"
 	u := fmt.Sprintf(urlTemplate, tp, nm, val)
 	res, err := http.Post(u, "text/plain", nil)
 	if err != nil {
