@@ -54,7 +54,7 @@ func MetricHandler(s MetricsReader) http.HandlerFunc {
 				http.NotFound(w, r)
 				return
 			}
-			metricVal = strconv.FormatFloat(m, 'f', 3, 64)
+			metricVal = strconv.FormatFloat(m, 'f', -1, 64)
 		case CounterType:
 			m, err := s.ReadCounter(nm)
 			if err != nil {

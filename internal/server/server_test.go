@@ -33,7 +33,7 @@ func TestRouter(t *testing.T) {
 	rw.EXPECT().WriteCounter("known", int64(123))
 	rw.EXPECT().WriteGauge("known", float64(123))
 	rw.EXPECT().ReadCounter("known").Return(int64(1), nil)
-	rw.EXPECT().ReadGauge("known").Return(float64(1), nil)
+	rw.EXPECT().ReadGauge("known").Return(float64(1.1), nil)
 	rw.EXPECT().ReadGauge("unknown").Return(float64(0), errors.New("unknown metric"))
 	rw.EXPECT().ReadAllCounters().Return(map[string]int64{"Test1": int64(1)})
 	rw.EXPECT().ReadAllGauges().Return(map[string]float64{"Test2": float64(2)})
@@ -81,7 +81,7 @@ func TestRouter(t *testing.T) {
 			expected: expected{
 				contentType: "text/plain; charset=utf-8",
 				status:      http.StatusOK,
-				body:        "1.000",
+				body:        "1.1",
 			},
 		},
 		{
