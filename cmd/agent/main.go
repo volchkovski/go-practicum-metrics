@@ -5,6 +5,7 @@ import (
 )
 
 func main() {
-	a := agent.New()
+	parseFlags()
+	a := agent.New(flagServerAddr, flagRepIntr, flagPollIntr)
 	a.Run()
 }

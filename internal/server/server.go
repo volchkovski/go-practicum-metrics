@@ -14,8 +14,8 @@ type Server struct {
 	storage handlers.MetricsReadWriter
 }
 
-func (s *Server) Run() error {
-	if err := http.ListenAndServe(`:8080`, s.router); err != nil {
+func (s *Server) Run(addr string) error {
+	if err := http.ListenAndServe(addr, s.router); err != nil {
 		return err
 	}
 	return nil

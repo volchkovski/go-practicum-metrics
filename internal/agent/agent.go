@@ -42,19 +42,22 @@ var runtimeMetrics = []string{
 }
 
 type Agent struct {
-	memStats  *runtime.MemStats
-	pollCount int
+	memStats   *runtime.MemStats
+	repIntr    time.Duration
+	pollIntr   time.Duration
+	serverAddr string
+	pollCount  int
 }
 
 func (a *Agent) Run() {
 	go func() {
 		for {
 			runtime.ReadMemStats(a.memStats)
-			time.Sleep(2 * time.Second)
+			time.Sleep(a.pollIntr)
 		}
 	}()
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(a.repIntr)
 		a.collectMetrics()
 	}
 }
@@ -62,33 +65,21 @@ func (a *Agent) Run() {
 func (a *Agent) collectMetrics() {
 	val := reflect.ValueOf(*a.memStats)
 	for _, m := range runtimeMetrics {
-		if err := postMetric("gauge", m, val.FieldByName(m)); err != nil {
+		if err := a.postMetric("gauge", m, val.FieldByName(m)); err != nil {
 			log.Println(err)
 		}
 	}
-	if err := postMetric("gauge", "RandomValue", getRandomInt()); err != nil {
+	if err := a.postMetric("gauge", "RandomValue", getRandomInt()); err != nil {
 		log.Printf("Failed to post RandomValue %s\n", err.Error())
 	}
 	a.pollCount += 1
-	if err := postMetric("counter", "PollCount", a.pollCount); err != nil {
+	if err := a.postMetric("counter", "PollCount", a.pollCount); err != nil {
 		log.Printf("Failed to post PollCount %s\n", err.Error())
 	}
 }
 
-func New() *Agent {
-	return &Agent{
-		memStats:  &runtime.MemStats{},
-		pollCount: 0,
-	}
-}
-
-func getRandomInt() int {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	return r.Int()
-}
-
-func postMetric(tp, nm string, val any) error {
-	urlTemplate := `http://localhost:8080/update/%s/%s/%v`
+func (a *Agent) postMetric(tp, nm string, val any) error {
+	urlTemplate := a.serverAddr + "/update/%s/%s/%v"
 	u := fmt.Sprintf(urlTemplate, tp, nm, val)
 	res, err := http.Post(u, "text/plain", nil)
 	if err != nil {
@@ -103,4 +94,19 @@ func postMetric(tp, nm string, val any) error {
 		return fmt.Errorf("failed to read response body %s", err.Error())
 	}
 	return fmt.Errorf("status: %d description: %s", res.StatusCode, string(msg))
+}
+
+func New(serverAddr string, repIntr, pollIntr int) *Agent {
+	return &Agent{
+		memStats:   &runtime.MemStats{},
+		repIntr:    time.Duration(repIntr) * time.Second,
+		pollIntr:   time.Duration(pollIntr) * time.Second,
+		serverAddr: serverAddr,
+		pollCount:  0,
+	}
+}
+
+func getRandomInt() int {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	return r.Int()
 }
