@@ -3,65 +3,71 @@ package handlers
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
+
+	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func CollectMetricHandler(s MetricsWriter) http.HandlerFunc {
+func CollectMetricHandler(s MetricPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		tp := chi.URLParam(r, "tp")
 		nm := chi.URLParam(r, "nm")
 		val := chi.URLParam(r, "val")
 
-		switch MetricType(tp) {
-		case GaugeType:
-			v, err := strconv.ParseFloat(val, 64)
-			if err != nil {
-				http.Error(w, "Value for gauge type must be float", http.StatusBadRequest)
-				return
-			}
-			s.WriteGauge(nm, v)
-		case CounterType:
-			v, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				http.Error(w, "Value for counter type must be integer", http.StatusBadRequest)
-				return
-			}
-			s.WriteCounter(nm, v)
-		default:
-			msg := fmt.Sprintf("Allowed metric types: %s, %s", GaugeType, CounterType)
-			http.Error(w, msg, http.StatusBadRequest)
+		if err := collectMetric(s, tp, nm, val); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func MetricHandler(s MetricsReader) http.HandlerFunc {
+func collectMetric(s MetricPusher, tp, nm, val string) error {
+	switch MetricType(tp) {
+	case GaugeType:
+		v, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return fmt.Errorf("value for gauge type must be float: %w", err)
+		}
+		s.PushGaugeMetric(&m.GaugeMetric{Name: nm, Value: v})
+	case CounterType:
+		v, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("value for counter must be integer: %w", err)
+		}
+		s.PushCounterMetric(&m.CounterMetric{Name: nm, Value: v})
+	default:
+		return fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
+	}
+	return nil
+}
+
+func MetricHandler(s MetricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tp := chi.URLParam(r, "tp")
 		nm := chi.URLParam(r, "nm")
 		var metricVal string
 		switch MetricType(tp) {
 		case GaugeType:
-			m, err := s.ReadGauge(nm)
+			m, err := s.GetGaugeMetric(nm)
 			if err != nil {
-				http.NotFound(w, r)
+				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			metricVal = strconv.FormatFloat(m, 'f', -1, 64)
+			metricVal = strconv.FormatFloat(m.Value, 'f', -1, 64)
 		case CounterType:
-			m, err := s.ReadCounter(nm)
+			m, err := s.GetCounterMetric(nm)
 			if err != nil {
-				http.NotFound(w, r)
+				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			metricVal = strconv.FormatInt(m, 10)
+			metricVal = strconv.FormatInt(m.Value, 10)
 		default:
 			msg := fmt.Sprintf("Allowed metric types: %s, %s", GaugeType, CounterType)
 			http.Error(w, msg, http.StatusBadRequest)
@@ -73,29 +79,40 @@ func MetricHandler(s MetricsReader) http.HandlerFunc {
 	}
 }
 
-func AllMetricsHandler(s AllMetricsReader) http.HandlerFunc {
+func AllMetricsHandler(s AllMetricsGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		type Metric struct {
+		type metric struct {
 			Name  string
 			Value string
 		}
-		var metrics []Metric
-		for nm, val := range s.ReadAllGauges() {
-			metrics = append(metrics, Metric{nm, strconv.FormatFloat(val, 'f', 2, 64)})
+		var metrics []metric
+
+		gaugeMetrics, err := s.GetAllGaugeMetrics()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		for nm, val := range s.ReadAllCounters() {
-			metrics = append(metrics, Metric{nm, strconv.FormatInt(val, 10)})
+		for _, gm := range gaugeMetrics {
+			metrics = append(metrics, metric{gm.Name, strconv.FormatFloat(gm.Value, 'f', 2, 64)})
 		}
+
+		counterMetrics, err := s.GetAllCounterMetrics()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, cm := range counterMetrics {
+			metrics = append(metrics, metric{cm.Name, strconv.FormatInt(cm.Value, 10)})
+		}
+
 		t, err := template.New("AllMetrics").Parse(HTMLAllMetrics)
 		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to parse html template: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 		err = t.Execute(w, metrics)
 		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to put metrics into html template: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html")

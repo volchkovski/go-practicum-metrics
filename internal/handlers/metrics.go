@@ -1,5 +1,9 @@
 package handlers
 
+import (
+	m "github.com/volchkovski/go-practicum-metrics/internal/models"
+)
+
 type MetricType string
 
 const (
@@ -7,39 +11,17 @@ const (
 	CounterType = MetricType("counter")
 )
 
-type MetricsReadWriter interface {
-	MetricsReader
-	MetricsWriter
-	AllMetricsReader
+type MetricGetter interface {
+	GetGaugeMetric(string) (*m.GaugeMetric, error)
+	GetCounterMetric(string) (*m.CounterMetric, error)
 }
 
-type AllMetricsReader interface {
-	ReadAllGauges() map[string]float64
-	ReadAllCounters() map[string]int64
+type MetricPusher interface {
+	PushGaugeMetric(*m.GaugeMetric) error
+	PushCounterMetric(*m.CounterMetric) error
 }
 
-type MetricsWriter interface {
-	GaugeWriter
-	CounterWriter
-}
-
-type MetricsReader interface {
-	GaugeReader
-	CounterReader
-}
-
-type GaugeWriter interface {
-	WriteGauge(string, float64) error
-}
-
-type CounterWriter interface {
-	WriteCounter(string, int64) error
-}
-
-type GaugeReader interface {
-	ReadGauge(string) (float64, error)
-}
-
-type CounterReader interface {
-	ReadCounter(string) (int64, error)
+type AllMetricsGetter interface {
+	GetAllGaugeMetrics() ([]*m.GaugeMetric, error)
+	GetAllCounterMetrics() ([]*m.CounterMetric, error)
 }

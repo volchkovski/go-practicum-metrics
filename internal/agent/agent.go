@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/volchkovski/go-practicum-metrics/internal/configs"
 )
 
 var runtimeMetrics = []string{
@@ -96,12 +98,12 @@ func (a *Agent) postMetric(tp, nm string, val any) error {
 	return fmt.Errorf("status: %d description: %s", res.StatusCode, string(msg))
 }
 
-func New(serverAddr string, repIntr, pollIntr int) *Agent {
+func New(cfg *configs.AgentConfig) *Agent {
 	return &Agent{
 		memStats:   &runtime.MemStats{},
-		repIntr:    time.Duration(repIntr) * time.Second,
-		pollIntr:   time.Duration(pollIntr) * time.Second,
-		serverAddr: serverAddr,
+		repIntr:    time.Duration(cfg.ReportIntr) * time.Second,
+		pollIntr:   time.Duration(cfg.PollIntr) * time.Second,
+		serverAddr: cfg.ServerAddr,
 		pollCount:  0,
 	}
 }
