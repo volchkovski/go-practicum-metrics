@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/volchkovski/go-practicum-metrics/internal/handlers"
+	"github.com/volchkovski/go-practicum-metrics/internal/middleware"
 )
 
 type metricsProcessor interface {
@@ -15,6 +16,7 @@ type metricsProcessor interface {
 
 func NewMetricRouter(s metricsProcessor) chi.Router {
 	r := chi.NewRouter()
+	r.Use(middleware.WithLogging)
 	r.Get(`/`, handlers.AllMetricsHandler(s))
 	r.Route(`/update/{tp}`, func(r chi.Router) {
 		r.Post(`/`, http.NotFound)
