@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -116,6 +117,77 @@ func AllMetricsHandler(s AllMetricsGetter) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func CollectMetricHandlerJSON(s MetricPusher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metric m.Metrics
+
+		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if err := collectMetricJSON(s, metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func collectMetricJSON(s MetricPusher, metric m.Metrics) error {
+	switch MetricType(metric.MType) {
+	case GaugeType:
+		s.PushGaugeMetric(&m.GaugeMetric{Name: metric.ID, Value: *metric.Value})
+	case CounterType:
+		s.PushCounterMetric(&m.CounterMetric{Name: metric.ID, Value: *metric.Delta})
+	default:
+		return fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
+	}
+	return nil
+}
+
+func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metric m.Metrics
+
+		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch MetricType(metric.MType) {
+		case GaugeType:
+			gm, err := s.GetGaugeMetric(metric.ID)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			metric.Value = &gm.Value
+		case CounterType:
+			cm, err := s.GetCounterMetric(metric.ID)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			metric.Delta = &cm.Value
+		}
+
+		if err := json.NewEncoder(w).Encode(metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 	}
 }

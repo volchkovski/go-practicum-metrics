@@ -18,10 +18,16 @@ func NewMetricRouter(s metricsProcessor) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.WithLogging)
 	r.Get(`/`, handlers.AllMetricsHandler(s))
-	r.Route(`/update/{tp}`, func(r chi.Router) {
-		r.Post(`/`, http.NotFound)
-		r.Post(`/{nm}/{val}`, handlers.CollectMetricHandler(s))
+	r.Route(`/update`, func(r chi.Router) {
+		r.Post(`/`, handlers.CollectMetricHandlerJSON(s))
+		r.Route(`/{tp}`, func(r chi.Router) {
+			r.Post(`/`, http.NotFound)
+			r.Post(`/{nm}/{val}`, handlers.CollectMetricHandler(s))
+		})
 	})
-	r.Get(`/value/{tp}/{nm}`, handlers.MetricHandler(s))
+	r.Route(`/value`, func(r chi.Router) {
+		r.Post(`/`, handlers.MetricHandlerJSON(s))
+		r.Get(`/{tp}/{nm}`, handlers.MetricHandler(s))
+	})
 	return r
 }
