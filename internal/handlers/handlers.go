@@ -182,12 +182,12 @@ func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 			metric.Delta = &cm.Value
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 	}
 }
