@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
+	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
 var runtimeMetrics = []string{
@@ -48,7 +51,7 @@ type Agent struct {
 	repIntr    time.Duration
 	pollIntr   time.Duration
 	serverAddr string
-	pollCount  int
+	pollCount  int64
 }
 
 func (a *Agent) Run() {
@@ -65,25 +68,46 @@ func (a *Agent) Run() {
 }
 
 func (a *Agent) collectMetrics() {
-	val := reflect.ValueOf(*a.memStats)
-	for _, m := range runtimeMetrics {
-		if err := a.postMetric("gauge", m, val.FieldByName(m)); err != nil {
+	for _, metric := range runtimeMetrics {
+		v, ok := gaugeVal(a.memStats, metric)
+		if !ok {
+			log.Printf("Failed to get gauge value for %s", metric)
+			continue
+		}
+		if err := a.postMetric(&m.Metrics{ID: metric, MType: "gauge", Value: &v}); err != nil {
 			log.Println(err)
 		}
 	}
-	if err := a.postMetric("gauge", "RandomValue", getRandomInt()); err != nil {
+	rv := getRandomFloat()
+	if err := a.postMetric(&m.Metrics{ID: "RandomValue", MType: "gauge", Value: &rv}); err != nil {
 		log.Printf("Failed to post RandomValue %s\n", err.Error())
 	}
 	a.pollCount += 1
-	if err := a.postMetric("counter", "PollCount", a.pollCount); err != nil {
+	if err := a.postMetric(&m.Metrics{ID: "PollCount", MType: "counter", Delta: &a.pollCount}); err != nil {
 		log.Printf("Failed to post PollCount %s\n", err.Error())
 	}
 }
 
-func (a *Agent) postMetric(tp, nm string, val any) error {
-	urlTemplate := "http://" + a.serverAddr + "/update/%s/%s/%v"
-	u := fmt.Sprintf(urlTemplate, tp, nm, val)
-	res, err := http.Post(u, "text/plain", nil)
+func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
+	field := reflect.ValueOf(*stat).FieldByName(fname)
+	if field.IsValid() {
+		switch field.Kind() {
+		case reflect.Uint32, reflect.Uint64:
+			return float64(field.Uint()), true
+		case reflect.Float64:
+			return field.Float(), true
+		}
+	}
+	return float64(0), false
+}
+
+func (a *Agent) postMetric(metric *m.Metrics) error {
+	url := "http://" + a.serverAddr + "/update"
+	var buff bytes.Buffer
+	if err := json.NewEncoder(&buff).Encode(metric); err != nil {
+		return err
+	}
+	res, err := http.Post(url, "application/json", &buff)
 	if err != nil {
 		return err
 	}
@@ -108,7 +132,7 @@ func New(cfg *configs.AgentConfig) *Agent {
 	}
 }
 
-func getRandomInt() int {
+func getRandomFloat() float64 {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	return r.Int()
+	return r.Float64()
 }
