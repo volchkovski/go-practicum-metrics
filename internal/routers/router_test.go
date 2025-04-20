@@ -45,7 +45,7 @@ func testIter(ts *httptest.Server, tc test) func(*testing.T) {
 		tc.mock()
 		resp, body := testRequest(t, ts, tc.method, tc.path)
 		defer resp.Body.Close()
-		assert.Equal(t, tc.expected.contentType, resp.Header.Get("Content-Type"))
+		assert.Contains(t, resp.Header.Get("Content-Type"), tc.expected.contentType)
 		assert.Equal(t, tc.expected.status, resp.StatusCode)
 		if tc.expected.body != "" {
 			assert.Equal(t, tc.expected.body, body)
@@ -98,7 +98,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock:   func() {},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusBadRequest,
 				body:        "",
 			},
@@ -109,7 +109,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock:   func() {},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusBadRequest,
 				body:        "",
 			},
@@ -120,7 +120,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock:   func() {},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusNotFound,
 				body:        "",
 			},
@@ -150,7 +150,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(&m.GaugeMetric{Name: "test", Value: float64(1.1)}, nil)
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusOK,
 				body:        "1.1",
 			},
@@ -164,7 +164,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(&m.CounterMetric{Name: "test", Value: int64(1)}, nil)
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusOK,
 				body:        "1",
 			},
@@ -178,7 +178,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(nil, errors.New("not existing metric"))
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusNotFound,
 				body:        "",
 			},
@@ -192,7 +192,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(nil, errors.New("not existing metric"))
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusNotFound,
 				body:        "",
 			},
@@ -228,7 +228,7 @@ func TestRouterAllMetricsHTML(t *testing.T) {
 					}, nil)
 			},
 			expected: expected{
-				contentType: "text/html; charset=utf-8",
+				contentType: "text/html",
 				status:      http.StatusOK,
 				body:        "",
 			},

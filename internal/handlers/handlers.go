@@ -74,9 +74,9 @@ func MetricHandler(s MetricGetter) http.HandlerFunc {
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
-		fmt.Fprint(w, metricVal)
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, metricVal)
 	}
 }
 
@@ -111,13 +111,13 @@ func AllMetricsHandler(s AllMetricsGetter) http.HandlerFunc {
 			http.Error(w, fmt.Sprintf("Failed to parse html template: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
 		err = t.Execute(w, metrics)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to put metrics into html template: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -136,11 +136,11 @@ func CollectMetricHandlerJSON(s MetricPusher) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -183,11 +183,10 @@ func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(metric); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		w.WriteHeader(http.StatusOK)
 	}
 }

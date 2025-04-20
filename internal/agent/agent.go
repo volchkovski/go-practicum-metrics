@@ -2,9 +2,9 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -12,39 +12,13 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/go-resty/resty/v2"
+
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
-var runtimeMetrics = []string{
-	"Alloc",
-	"BuckHashSys",
-	"Frees",
-	"GCCPUFraction",
-	"GCSys",
-	"HeapAlloc",
-	"HeapIdle",
-	"HeapInuse",
-	"HeapObjects",
-	"HeapReleased",
-	"HeapSys",
-	"LastGC",
-	"Lookups",
-	"MCacheInuse",
-	"MCacheSys",
-	"MSpanInuse",
-	"MSpanSys",
-	"Mallocs",
-	"NextGC",
-	"NumForcedGC",
-	"NumGC",
-	"OtherSys",
-	"PauseTotalNs",
-	"StackInuse",
-	"StackSys",
-	"Sys",
-	"TotalAlloc",
-}
+var headers = map[string]string{"Content-Encoding": "gzip", "Content-Type": "application/json"}
 
 type Agent struct {
 	memStats   *runtime.MemStats
@@ -52,6 +26,18 @@ type Agent struct {
 	pollIntr   time.Duration
 	serverAddr string
 	pollCount  int64
+	client     *resty.Client
+}
+
+func New(cfg *configs.AgentConfig) *Agent {
+	return &Agent{
+		memStats:   &runtime.MemStats{},
+		repIntr:    time.Duration(cfg.ReportIntr) * time.Second,
+		pollIntr:   time.Duration(cfg.PollIntr) * time.Second,
+		serverAddr: cfg.ServerAddr,
+		pollCount:  0,
+		client:     resty.New().SetHeaders(headers),
+	}
 }
 
 func (a *Agent) Run() {
@@ -103,33 +89,33 @@ func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
 
 func (a *Agent) postMetric(metric *m.Metrics) error {
 	url := "http://" + a.serverAddr + "/update"
-	var buff bytes.Buffer
-	if err := json.NewEncoder(&buff).Encode(metric); err != nil {
-		return err
-	}
-	res, err := http.Post(url, "application/json", &buff)
+
+	p, err := json.Marshal(metric)
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
-	if res.StatusCode == http.StatusOK {
+
+	var buff bytes.Buffer
+
+	cw, err := gzip.NewWriterLevel(&buff, gzip.BestSpeed)
+	if err != nil {
+		return err
+	}
+	if _, err = cw.Write(p); err != nil {
+		return err
+	}
+	cw.Close()
+
+	res, err := a.client.R().SetBody(&buff).Post(url)
+	if err != nil {
+		return err
+	}
+	statusCode := res.StatusCode()
+	if statusCode == http.StatusOK {
 		return nil
 	}
-	msg, err := io.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body %s", err.Error())
-	}
-	return fmt.Errorf("status: %d description: %s", res.StatusCode, string(msg))
-}
-
-func New(cfg *configs.AgentConfig) *Agent {
-	return &Agent{
-		memStats:   &runtime.MemStats{},
-		repIntr:    time.Duration(cfg.ReportIntr) * time.Second,
-		pollIntr:   time.Duration(cfg.PollIntr) * time.Second,
-		serverAddr: cfg.ServerAddr,
-		pollCount:  0,
-	}
+	body := res.Body()
+	return fmt.Errorf("got bad response status: %d body: %s", statusCode, string(body))
 }
 
 func getRandomFloat() float64 {
