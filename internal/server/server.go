@@ -2,9 +2,13 @@ package server
 
 import (
 	"fmt"
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/volchkovski/go-practicum-metrics/internal/backup"
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
+	"github.com/volchkovski/go-practicum-metrics/internal/httpserver"
 	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	"github.com/volchkovski/go-practicum-metrics/internal/routers"
 	"github.com/volchkovski/go-practicum-metrics/internal/services"
@@ -21,10 +25,31 @@ func Run(cfg *configs.ServerConfig) error {
 
 	service := services.NewMetricService(storage)
 
-	router := routers.NewMetricRouter(service)
+	b := backup.NewMetricsBackup(service, cfg.FileStoragePath, cfg.StoreIntr)
 
-	if err := http.ListenAndServe(cfg.Addr, router); err != nil {
-		return err
+	if cfg.Restore {
+		if err := b.Restore(); err != nil {
+			return err
+		}
 	}
+
+	router := routers.NewMetricRouter(service)
+	httpserver := httpserver.New(router, cfg.Addr)
+
+	httpserver.Start()
+	b.Start()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-httpserver.Notify():
+		return err
+	case err := <-b.Notify():
+		return err
+	case s := <-interrupt:
+		logger.Log.Infoln("server - Run - signal: " + s.String())
+	}
+
 	return nil
 }
