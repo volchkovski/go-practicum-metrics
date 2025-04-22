@@ -41,7 +41,7 @@ func (b *MetricsBackup) Notify() chan error {
 }
 
 func (b *MetricsBackup) Restore() (err error) {
-	file, err := os.Open(b.fp)
+	file, err := os.OpenFile(b.fp, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return
 	}

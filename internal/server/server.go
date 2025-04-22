@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,7 +29,7 @@ func Run(cfg *configs.ServerConfig) error {
 	b := backup.NewMetricsBackup(service, cfg.FileStoragePath, cfg.StoreIntr)
 
 	if cfg.Restore {
-		if err := b.Restore(); err != nil {
+		if err := b.Restore(); err != nil && err != io.EOF {
 			return err
 		}
 	}

@@ -26,7 +26,7 @@ func NewServerConfig() (*ServerConfig, error) {
 func parseServerFlags(cfg *ServerConfig) {
 	flag.StringVar(&cfg.Addr, "a", ":8080", "address and port to run server")
 	flag.IntVar(&cfg.StoreIntr, "i", 300, "metrics saves to file each time after this interval")
-	flag.StringVar(&cfg.FileStoragePath, "f", `./backup/metrics.json`, "file path for metrics saving")
+	flag.StringVar(&cfg.FileStoragePath, "f", `./metrics.json`, "file path for metrics saving")
 	flag.BoolVar(&cfg.Restore, "r", false, "load dumped metrics at server start")
 	flag.Parse()
 }
