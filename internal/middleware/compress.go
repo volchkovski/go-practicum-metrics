@@ -76,7 +76,11 @@ func WithCompress(h http.Handler) http.Handler {
 			logger.Log.Debugln("Created compressWriter")
 			cw := newCompressWriter(w)
 			ow = cw
-			defer cw.Close()
+			defer func() {
+				if err := cw.Close(); err != nil {
+					logger.Log.Errorf("Failed to close compressWriter: %s", err.Error())
+				}
+			}()
 		}
 
 		contentEncoding := r.Header.Get("Content-Encoding")
@@ -88,7 +92,11 @@ func WithCompress(h http.Handler) http.Handler {
 				return
 			}
 			r.Body = cr
-			defer cr.Close()
+			defer func() {
+				if err := cr.Close(); err != nil {
+					logger.Log.Errorf("Failed to close compressReader: %s", err.Error())
+				}
+			}()
 		}
 
 		h.ServeHTTP(ow, r)

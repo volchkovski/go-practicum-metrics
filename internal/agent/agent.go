@@ -104,7 +104,10 @@ func (a *Agent) postMetric(metric *m.Metrics) error {
 	if _, err = cw.Write(p); err != nil {
 		return err
 	}
-	cw.Close()
+
+	if err = cw.Close(); err != nil {
+		return err
+	}
 
 	res, err := a.client.R().SetBody(&buff).Post(url)
 	if err != nil {

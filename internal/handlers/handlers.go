@@ -36,13 +36,18 @@ func collectMetric(s MetricPusher, tp, nm, val string) error {
 		if err != nil {
 			return fmt.Errorf("value for gauge type must be float: %w", err)
 		}
-		s.PushGaugeMetric(&m.GaugeMetric{Name: nm, Value: v})
+		if err = s.PushGaugeMetric(&m.GaugeMetric{Name: nm, Value: v}); err != nil {
+			return fmt.Errorf("failed to push gauge metric: %w", err)
+		}
+
 	case CounterType:
 		v, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return fmt.Errorf("value for counter must be integer: %w", err)
 		}
-		s.PushCounterMetric(&m.CounterMetric{Name: nm, Value: v})
+		if err = s.PushCounterMetric(&m.CounterMetric{Name: nm, Value: v}); err != nil {
+			return fmt.Errorf("failed to push counter metric: %w", err)
+		}
 	default:
 		return fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
 	}
@@ -76,7 +81,10 @@ func MetricHandler(s MetricGetter) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, metricVal)
+		if _, err := fmt.Fprint(w, metricVal); err != nil {
+			http.Error(w, "Failed to write body: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -147,9 +155,13 @@ func CollectMetricHandlerJSON(s MetricPusher) http.HandlerFunc {
 func collectMetricJSON(s MetricPusher, metric m.Metrics) error {
 	switch MetricType(metric.MType) {
 	case GaugeType:
-		s.PushGaugeMetric(&m.GaugeMetric{Name: metric.ID, Value: *metric.Value})
+		if err := s.PushGaugeMetric(&m.GaugeMetric{Name: metric.ID, Value: *metric.Value}); err != nil {
+			return fmt.Errorf("failed to push gauge metric: %w", err)
+		}
 	case CounterType:
-		s.PushCounterMetric(&m.CounterMetric{Name: metric.ID, Value: *metric.Delta})
+		if err := s.PushCounterMetric(&m.CounterMetric{Name: metric.ID, Value: *metric.Delta}); err != nil {
+			return fmt.Errorf("failed to push counter metric: %w", err)
+		}
 	default:
 		return fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
 	}

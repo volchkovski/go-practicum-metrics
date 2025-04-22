@@ -39,7 +39,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -51,7 +53,9 @@ func testIter(ts *httptest.Server, tc test) func(*testing.T) {
 	return func(t *testing.T) {
 		tc.mock()
 		resp, body := testRequest(t, ts, tc.method, tc.path, strings.NewReader(tc.body), nil)
-		defer resp.Body.Close()
+		defer func() {
+			require.NoError(t, resp.Body.Close())
+		}()
 		assert.Equal(t, tc.expected.status, resp.StatusCode)
 		contentType := resp.Header.Get("Content-Type")
 		assert.Contains(t, contentType, tc.expected.contentType)
