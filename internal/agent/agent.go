@@ -82,6 +82,8 @@ func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
 			return float64(field.Uint()), true
 		case reflect.Float64:
 			return field.Float(), true
+		default:
+			return float64(0), false
 		}
 	}
 	return float64(0), false

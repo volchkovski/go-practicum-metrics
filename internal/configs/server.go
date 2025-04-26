@@ -12,6 +12,8 @@ type ServerConfig struct {
 	StoreIntr       int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
+	LogLevel        string `env:"LOG_LEVEL"`
+	Env             string `env:"ENVIRONMENT"`
 }
 
 func NewServerConfig() (*ServerConfig, error) {
@@ -28,5 +30,7 @@ func parseServerFlags(cfg *ServerConfig) {
 	flag.IntVar(&cfg.StoreIntr, "i", 300, "metrics saves to file each time after this interval")
 	flag.StringVar(&cfg.FileStoragePath, "f", `./metrics.json`, "file path for metrics saving")
 	flag.BoolVar(&cfg.Restore, "r", false, "load dumped metrics at server start")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "level of logging")
+	flag.StringVar(&cfg.Env, "e", "local", "environment: prod, local")
 	flag.Parse()
 }

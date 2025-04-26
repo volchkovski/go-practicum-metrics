@@ -7,36 +7,29 @@ import (
 	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 )
 
-type (
-	responseData struct {
-		status int
-		size   int
-	}
-	loggingResponseWriter struct {
-		http.ResponseWriter
-		responseData *responseData
-	}
-)
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	size   int
+}
 
-func (rw *loggingResponseWriter) Writer(b []byte) (int, error) {
+func (rw *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := rw.ResponseWriter.Write(b)
-	rw.responseData.size += size
+	rw.size += size
 	return size, err
 }
 
 func (rw *loggingResponseWriter) WriteHeader(statusCode int) {
 	rw.ResponseWriter.WriteHeader(statusCode)
-	rw.responseData.status = statusCode
+	rw.status = statusCode
 }
 
 func WithLogging(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		responseData := &responseData{}
 		lw := loggingResponseWriter{
 			ResponseWriter: w,
-			responseData:   responseData,
 		}
 		h.ServeHTTP(&lw, r)
 
@@ -50,8 +43,8 @@ func WithLogging(h http.Handler) http.Handler {
 		)
 		logger.Log.Infow(
 			"Sent response",
-			"status", responseData.status,
-			"size", responseData.size,
+			"status", lw.status,
+			"size", lw.size,
 		)
 	}
 	return http.HandlerFunc(logFn)

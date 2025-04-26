@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,11 +17,16 @@ import (
 	"github.com/volchkovski/go-practicum-metrics/internal/storage"
 )
 
-func Run(cfg *configs.ServerConfig) error {
-	if err := logger.Initialize("debug"); err != nil {
+func Run(cfg *configs.ServerConfig) (err error) {
+	if err = logger.Initialize(cfg.LogLevel, cfg.Env); err != nil {
 		return fmt.Errorf("failed to intizalize logger: %w", err)
 	}
-	defer logger.Log.Sync()
+
+	defer func() {
+		if errSync := logger.Log.Sync(); errSync != nil {
+			err = errors.Join(err, errSync)
+		}
+	}()
 
 	storage := storage.NewMemStorage()
 
@@ -29,8 +35,8 @@ func Run(cfg *configs.ServerConfig) error {
 	b := backup.NewMetricsBackup(service, cfg.FileStoragePath, cfg.StoreIntr)
 
 	if cfg.Restore {
-		if err := b.Restore(); err != nil && err != io.EOF {
-			return err
+		if err = b.Restore(); err != nil && !errors.Is(err, io.EOF) {
+			return
 		}
 	}
 
@@ -44,10 +50,10 @@ func Run(cfg *configs.ServerConfig) error {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case err := <-httpserver.Notify():
-		return err
-	case err := <-b.Notify():
-		return err
+	case err = <-httpserver.Notify():
+		return
+	case err = <-b.Notify():
+		return
 	case s := <-interrupt:
 		logger.Log.Infoln("server - Run - signal: " + s.String())
 	}
