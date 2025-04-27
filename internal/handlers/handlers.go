@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -35,13 +36,18 @@ func collectMetric(s MetricPusher, tp, nm, val string) error {
 		if err != nil {
 			return fmt.Errorf("value for gauge type must be float: %w", err)
 		}
-		s.PushGaugeMetric(&m.GaugeMetric{Name: nm, Value: v})
+		if err = s.PushGaugeMetric(&m.GaugeMetric{Name: nm, Value: v}); err != nil {
+			return fmt.Errorf("failed to push gauge metric: %w", err)
+		}
+
 	case CounterType:
 		v, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return fmt.Errorf("value for counter must be integer: %w", err)
 		}
-		s.PushCounterMetric(&m.CounterMetric{Name: nm, Value: v})
+		if err = s.PushCounterMetric(&m.CounterMetric{Name: nm, Value: v}); err != nil {
+			return fmt.Errorf("failed to push counter metric: %w", err)
+		}
 	default:
 		return fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
 	}
@@ -73,9 +79,12 @@ func MetricHandler(s MetricGetter) http.HandlerFunc {
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
-		fmt.Fprint(w, metricVal)
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
+		if _, err := fmt.Fprint(w, metricVal); err != nil {
+			http.Error(w, "Failed to write body: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -110,12 +119,86 @@ func AllMetricsHandler(s AllMetricsGetter) http.HandlerFunc {
 			http.Error(w, fmt.Sprintf("Failed to parse html template: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
 		err = t.Execute(w, metrics)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to put metrics into html template: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html")
+	}
+}
+
+func CollectMetricHandlerJSON(s MetricPusher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metric m.Metrics
+
+		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if err := collectMetricJSON(s, metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func collectMetricJSON(s MetricPusher, metric m.Metrics) error {
+	switch MetricType(metric.MType) {
+	case GaugeType:
+		if err := s.PushGaugeMetric(&m.GaugeMetric{Name: metric.ID, Value: *metric.Value}); err != nil {
+			return fmt.Errorf("failed to push gauge metric: %w", err)
+		}
+	case CounterType:
+		if err := s.PushCounterMetric(&m.CounterMetric{Name: metric.ID, Value: *metric.Delta}); err != nil {
+			return fmt.Errorf("failed to push counter metric: %w", err)
+		}
+	default:
+		return fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
+	}
+	return nil
+}
+
+func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metric m.Metrics
+
+		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch MetricType(metric.MType) {
+		case GaugeType:
+			gm, err := s.GetGaugeMetric(metric.ID)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			metric.Value = &gm.Value
+		case CounterType:
+			cm, err := s.GetCounterMetric(metric.ID)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			metric.Delta = &cm.Value
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(metric); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,17 +23,25 @@ type test struct {
 	name     string
 	path     string
 	method   string
+	headers  http.Header
+	body     string
 	mock     func()
 	expected expected
 }
 
-func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
-	req, err := http.NewRequest(method, ts.URL+path, nil)
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader, headers http.Header) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, body)
 	require.NoError(t, err)
+
+	if headers != nil {
+		req.Header = headers
+	}
 
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -43,11 +52,16 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 func testIter(ts *httptest.Server, tc test) func(*testing.T) {
 	return func(t *testing.T) {
 		tc.mock()
-		resp, body := testRequest(t, ts, tc.method, tc.path)
-		defer resp.Body.Close()
-		assert.Equal(t, tc.expected.contentType, resp.Header.Get("Content-Type"))
+		resp, body := testRequest(t, ts, tc.method, tc.path, strings.NewReader(tc.body), nil)
+		defer func() {
+			require.NoError(t, resp.Body.Close())
+		}()
 		assert.Equal(t, tc.expected.status, resp.StatusCode)
-		if tc.expected.body != "" {
+		contentType := resp.Header.Get("Content-Type")
+		assert.Contains(t, contentType, tc.expected.contentType)
+		if tc.expected.body != "" && strings.Contains(contentType, "application/json") {
+			assert.JSONEq(t, tc.expected.body, body)
+		} else if tc.expected.body != "" {
 			assert.Equal(t, tc.expected.body, body)
 		}
 	}
@@ -98,7 +112,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock:   func() {},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusBadRequest,
 				body:        "",
 			},
@@ -109,7 +123,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock:   func() {},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusBadRequest,
 				body:        "",
 			},
@@ -120,7 +134,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock:   func() {},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusNotFound,
 				body:        "",
 			},
@@ -150,7 +164,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(&m.GaugeMetric{Name: "test", Value: float64(1.1)}, nil)
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusOK,
 				body:        "1.1",
 			},
@@ -164,7 +178,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(&m.CounterMetric{Name: "test", Value: int64(1)}, nil)
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusOK,
 				body:        "1",
 			},
@@ -178,7 +192,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(nil, errors.New("not existing metric"))
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusNotFound,
 				body:        "",
 			},
@@ -192,7 +206,7 @@ func TestRouterGetMetric(t *testing.T) {
 					Return(nil, errors.New("not existing metric"))
 			},
 			expected: expected{
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				status:      http.StatusNotFound,
 				body:        "",
 			},
@@ -228,9 +242,93 @@ func TestRouterAllMetricsHTML(t *testing.T) {
 					}, nil)
 			},
 			expected: expected{
-				contentType: "text/html; charset=utf-8",
+				contentType: "text/html",
 				status:      http.StatusOK,
 				body:        "",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, testIter(ts, tc))
+	}
+}
+
+func TestRouterMetricJSON(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+
+	service := NewMockmetricsProcessor(mockCtl)
+	r := NewMetricRouter(service)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/json")
+	tests := []test{
+		{
+			name:    "get valid gauge metric",
+			path:    "/value",
+			method:  http.MethodPost,
+			body:    `{"id": "test", "type": "gauge"}`,
+			headers: headers,
+			mock: func() {
+				service.EXPECT().GetGaugeMetric("test").
+					Return(&m.GaugeMetric{Name: "test", Value: float64(1.1)}, nil)
+			},
+			expected: expected{
+				contentType: "application/json",
+				status:      http.StatusOK,
+				body:        `{"id": "test", "type": "gauge", "value": 1.1}`,
+			},
+		},
+		{
+			name:    "get counter metric",
+			path:    "/value",
+			method:  http.MethodPost,
+			body:    `{"id": "test", "type": "counter"}`,
+			headers: headers,
+			mock: func() {
+				service.EXPECT().GetCounterMetric("test").
+					Return(&m.CounterMetric{Name: "test", Value: int64(1)}, nil)
+			},
+			expected: expected{
+				contentType: "application/json",
+				status:      http.StatusOK,
+				body:        `{"id": "test", "type": "counter", "delta": 1}`,
+			},
+		},
+		{
+			name:    "update gauge metric",
+			path:    "/update",
+			method:  http.MethodPost,
+			body:    `{"id": "test", "type": "gauge", "value": 123.0}`,
+			headers: headers,
+			mock: func() {
+				service.EXPECT().
+					PushGaugeMetric(&m.GaugeMetric{Name: "test", Value: float64(123)}).
+					Return(nil)
+			},
+			expected: expected{
+				contentType: "application/json",
+				status:      http.StatusOK,
+				body:        `{"id": "test", "type": "gauge", "value": 123.0}`,
+			},
+		},
+		{
+			name:    "update counter metric",
+			path:    "/update",
+			method:  http.MethodPost,
+			body:    `{"id": "test", "type": "counter", "delta": 123}`,
+			headers: headers,
+			mock: func() {
+				service.EXPECT().
+					PushCounterMetric(&m.CounterMetric{Name: "test", Value: int64(123)}).
+					Return(nil)
+			},
+			expected: expected{
+				contentType: "application/json",
+				status:      http.StatusOK,
+				body:        `{"id": "test", "type": "counter", "delta": 123}`,
 			},
 		},
 	}
