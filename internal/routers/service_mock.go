@@ -100,6 +100,20 @@ func (mr *MockmetricsProcessorMockRecorder) GetGaugeMetric(arg0 any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGaugeMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).GetGaugeMetric), arg0)
 }
 
+// PingDB mocks base method.
+func (m *MockmetricsProcessor) PingDB() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PingDB")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PingDB indicates an expected call of PingDB.
+func (mr *MockmetricsProcessorMockRecorder) PingDB() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingDB", reflect.TypeOf((*MockmetricsProcessor)(nil).PingDB))
+}
+
 // PushCounterMetric mocks base method.
 func (m *MockmetricsProcessor) PushCounterMetric(arg0 *models.CounterMetric) error {
 	m.ctrl.T.Helper()

@@ -8,10 +8,14 @@ import (
 
 type MetricService struct {
 	repo MetricsReadWriter
+	db   Pinger
 }
 
-func NewMetricService(repo MetricsReadWriter) *MetricService {
-	return &MetricService{repo}
+func NewMetricService(repo MetricsReadWriter, db Pinger) *MetricService {
+	return &MetricService{
+		repo: repo,
+		db:   db,
+	}
 }
 
 func (ms *MetricService) GetGaugeMetric(nm string) (*m.GaugeMetric, error) {
@@ -66,4 +70,11 @@ func (ms *MetricService) GetAllCounterMetrics() ([]*m.CounterMetric, error) {
 		counterMetrics = append(counterMetrics, &m.CounterMetric{Name: nm, Value: val})
 	}
 	return counterMetrics, nil
+}
+
+func (ms *MetricService) PingDB() error {
+	if err := ms.db.Ping(); err != nil {
+		return fmt.Errorf("DB is not connected: %w", err)
+	}
+	return nil
 }

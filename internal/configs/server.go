@@ -14,6 +14,7 @@ type ServerConfig struct {
 	Restore         bool   `env:"RESTORE"`
 	LogLevel        string `env:"LOG_LEVEL"`
 	Env             string `env:"ENVIRONMENT"`
+	DSN             string `env:"DATABASE_DSN"`
 }
 
 func NewServerConfig() (*ServerConfig, error) {
@@ -32,5 +33,6 @@ func parseServerFlags(cfg *ServerConfig) {
 	flag.BoolVar(&cfg.Restore, "r", false, "load dumped metrics at server start")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "level of logging")
 	flag.StringVar(&cfg.Env, "e", "local", "environment: prod, local")
+	flag.StringVar(&cfg.DSN, "d", "user=postgres password=postgres database=test sslmode=disable", "postgres dsn")
 	flag.Parse()
 }
