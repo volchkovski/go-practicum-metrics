@@ -10,9 +10,13 @@ import (
 )
 
 func TestMetricService(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	repo := NewMockMetricsReadWriter(mockCtrl)
-	mservice := NewMetricService(repo)
+	ctrl1 := gomock.NewController(t)
+	repo := NewMockMetricsReadWriter(ctrl1)
+
+	ctrl2 := gomock.NewController(t)
+	db := NewMockPinger(ctrl2)
+
+	mservice := NewMetricService(repo, db)
 
 	t.Run("get gauge metric", func(t *testing.T) {
 		repo.EXPECT().ReadGauge("test").Return(float64(123), nil)

@@ -7,10 +7,15 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 
 	"github.com/go-chi/chi/v5"
 )
+
+type DBPinger interface {
+	PingDB() error
+}
 
 func CollectMetricHandler(s MetricPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -200,5 +205,16 @@ func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func PingDB(s DBPinger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := s.PingDB(); err != nil {
+			logger.Log.Infof("PingDB error: %s", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }

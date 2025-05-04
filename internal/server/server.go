@@ -15,6 +15,7 @@ import (
 	"github.com/volchkovski/go-practicum-metrics/internal/routers"
 	"github.com/volchkovski/go-practicum-metrics/internal/services"
 	"github.com/volchkovski/go-practicum-metrics/internal/storage"
+	"github.com/volchkovski/go-practicum-metrics/internal/storage/pg"
 )
 
 func Run(cfg *configs.ServerConfig) (err error) {
@@ -28,9 +29,22 @@ func Run(cfg *configs.ServerConfig) (err error) {
 		}
 	}()
 
-	storage := storage.NewMemStorage()
-
-	service := services.NewMetricService(storage)
+	var service *services.MetricService
+	if cfg.DSN != "" {
+		db, err := pg.New(cfg.DSN)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if errDBClose := db.Close(); errDBClose != nil {
+				err = errors.Join(err, errDBClose)
+			}
+		}()
+		service = services.NewMetricService(db, db)
+	} else {
+		mstorage := storage.NewMemStorage()
+		service = services.NewMetricService(mstorage, nil)
+	}
 
 	b := backup.NewMetricsBackup(service, cfg.FileStoragePath, cfg.StoreIntr)
 
