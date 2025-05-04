@@ -22,7 +22,6 @@ func Run(cfg *configs.ServerConfig) (err error) {
 	if err = logger.Initialize(cfg.LogLevel, cfg.Env); err != nil {
 		return fmt.Errorf("failed to intizalize logger: %w", err)
 	}
-	logger.Log.Infof("Config: %+v", cfg)
 
 	defer func() {
 		if errSync := logger.Log.Sync(); errSync != nil {
@@ -31,6 +30,7 @@ func Run(cfg *configs.ServerConfig) (err error) {
 	}()
 
 	mstorage := storage.NewMemStorage()
+	logger.Log.Infof("Passed DSN: %s", cfg.DSN)
 	db, err := pg.New(cfg.DSN)
 	if err != nil {
 		return
