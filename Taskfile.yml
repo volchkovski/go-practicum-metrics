@@ -1,0 +1,6 @@
+version: '3'
+
+tasks:
+  gorun:
+    cmds:
+      - go run ./cmd/server/main.go -d "user=postgres password=postgres host=localhost port=5432 dbname=postgres sslmode=disable"

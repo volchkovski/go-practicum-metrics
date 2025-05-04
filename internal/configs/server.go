@@ -33,6 +33,6 @@ func parseServerFlags(cfg *ServerConfig) {
 	flag.BoolVar(&cfg.Restore, "r", false, "load dumped metrics at server start")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "level of logging")
 	flag.StringVar(&cfg.Env, "e", "local", "environment: prod, local")
-	flag.StringVar(&cfg.DSN, "d", "user=postgres password=postgres host=localhost port=5432 dbname=postgres sslmode=disable", "postgres data source name")
+	flag.StringVar(&cfg.DSN, "d", "", "postgres data source name")
 	flag.Parse()
 }

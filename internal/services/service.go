@@ -73,6 +73,9 @@ func (ms *MetricService) GetAllCounterMetrics() ([]*m.CounterMetric, error) {
 }
 
 func (ms *MetricService) PingDB() error {
+	if ms.db == nil {
+		return fmt.Errorf("DB is not initialized")
+	}
 	if err := ms.db.Ping(); err != nil {
 		return fmt.Errorf("DB is not connected: %w", err)
 	}
