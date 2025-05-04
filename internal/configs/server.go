@@ -20,11 +20,9 @@ type ServerConfig struct {
 func NewServerConfig() (*ServerConfig, error) {
 	cfg := new(ServerConfig)
 	parseServerFlags(cfg)
-	fmt.Printf("Config after flag parsed: %+v", cfg)
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("server config error: %w", err)
 	}
-	fmt.Printf("Config after envs parsed: %+v", cfg)
 	return cfg, nil
 }
 

@@ -3,7 +3,7 @@ package pg
 import (
 	"database/sql"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Pg struct {
@@ -11,7 +11,7 @@ type Pg struct {
 }
 
 func New(dsn string) (*Pg, error) {
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
