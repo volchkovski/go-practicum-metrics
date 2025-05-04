@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/caarlos0/env/v6"
-	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 )
 
 type ServerConfig struct {
@@ -21,11 +20,11 @@ type ServerConfig struct {
 func NewServerConfig() (*ServerConfig, error) {
 	cfg := new(ServerConfig)
 	parseServerFlags(cfg)
-	logger.Log.Infof("Config after flag parsed: %+v", cfg)
+	fmt.Printf("Config after flag parsed: %+v", cfg)
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("server config error: %w", err)
 	}
-	logger.Log.Infof("Config after envs parsed: %+v", cfg)
+	fmt.Printf("Config after envs parsed: %+v", cfg)
 	return cfg, nil
 }
 

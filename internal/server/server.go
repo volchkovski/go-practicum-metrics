@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,7 +32,7 @@ func Run(cfg *configs.ServerConfig) (err error) {
 
 	mstorage := storage.NewMemStorage()
 	logger.Log.Infof("Passed DSN: %s", cfg.DSN)
-	db, err := pg.New(cfg.DSN)
+	db, err := pg.New(url.QueryEscape(cfg.DSN))
 	if err != nil {
 		return
 	}
