@@ -29,22 +29,20 @@ func Run(cfg *configs.ServerConfig) (err error) {
 		}
 	}()
 
-	var service *services.MetricService
-	if cfg.DSN != "" {
-		db, err := pg.New(cfg.DSN)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if errDBClose := db.Close(); errDBClose != nil {
-				err = errors.Join(err, errDBClose)
-			}
-		}()
-		service = services.NewMetricService(db, db)
+	var strg services.MetricStorage
+	if cfg.DSN == "" {
+		strg = storage.NewMemStorage()
 	} else {
-		mstorage := storage.NewMemStorage()
-		service = services.NewMetricService(mstorage, nil)
+		if strg, err = pg.New(cfg.DSN); err != nil {
+			return
+		}
 	}
+	service := services.NewMetricService(strg)
+	defer func() {
+		if errServiceClose := service.Close(); errServiceClose != nil {
+			err = errors.Join(err, errServiceClose)
+		}
+	}()
 
 	b := backup.NewMetricsBackup(service, cfg.FileStoragePath, cfg.StoreIntr)
 

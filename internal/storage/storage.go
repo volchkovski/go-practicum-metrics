@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -19,6 +20,10 @@ func NewMemStorage() *MemStorage {
 		counters:     map[string]int64{},
 		countersLock: sync.RWMutex{},
 	}
+}
+
+func (s *MemStorage) Close() error {
+	return nil
 }
 
 func (s *MemStorage) WriteGauge(name string, value float64) error {
@@ -65,4 +70,22 @@ func (s *MemStorage) ReadAllCounters() (map[string]int64, error) {
 	defer s.countersLock.RUnlock()
 	counters := s.counters
 	return counters, nil
+}
+
+func (s *MemStorage) WriteGaugesCounters(gauges map[string]float64, counters map[string]int64) error {
+	s.gaugesLock.Lock()
+	defer s.gaugesLock.Unlock()
+	maps.Copy(s.gauges, gauges)
+
+	s.countersLock.Lock()
+	defer s.countersLock.Unlock()
+	for nm, v := range counters {
+		s.counters[nm] += v
+	}
+
+	return nil
+}
+
+func (s *MemStorage) Ping() error {
+	return nil
 }

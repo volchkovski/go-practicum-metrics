@@ -10,16 +10,13 @@ import (
 )
 
 func TestMetricService(t *testing.T) {
-	ctrl1 := gomock.NewController(t)
-	repo := NewMockMetricsReadWriter(ctrl1)
+	ctrl := gomock.NewController(t)
+	strg := NewMockMetricStorage(ctrl)
 
-	ctrl2 := gomock.NewController(t)
-	db := NewMockPgWriter(ctrl2)
-
-	mservice := NewMetricService(repo, db)
+	mservice := NewMetricService(strg)
 
 	t.Run("get gauge metric", func(t *testing.T) {
-		repo.EXPECT().ReadGauge("test").Return(float64(123), nil)
+		strg.EXPECT().ReadGauge("test").Return(float64(123), nil)
 		m, err := mservice.GetGaugeMetric("test")
 		require.Nil(t, err)
 		require.NotNil(t, m)
@@ -27,7 +24,7 @@ func TestMetricService(t *testing.T) {
 	})
 
 	t.Run("get counter metric", func(t *testing.T) {
-		repo.EXPECT().ReadCounter("test").Return(int64(123), nil)
+		strg.EXPECT().ReadCounter("test").Return(int64(123), nil)
 		m, err := mservice.GetCounterMetric("test")
 		require.Nil(t, err)
 		require.NotNil(t, m)
@@ -35,19 +32,19 @@ func TestMetricService(t *testing.T) {
 	})
 
 	t.Run("push gauge metric", func(t *testing.T) {
-		repo.EXPECT().WriteGauge("test", float64(123)).Return(nil)
+		strg.EXPECT().WriteGauge("test", float64(123)).Return(nil)
 		err := mservice.PushGaugeMetric(&models.GaugeMetric{Name: "test", Value: float64(123)})
 		require.Nil(t, err)
 	})
 
 	t.Run("push counter metric", func(t *testing.T) {
-		repo.EXPECT().WriteCounter("test", int64(123)).Return(nil)
+		strg.EXPECT().WriteCounter("test", int64(123)).Return(nil)
 		err := mservice.PushCounterMetric(&models.CounterMetric{Name: "test", Value: int64(123)})
 		require.Nil(t, err)
 	})
 
 	t.Run("get all gauge metrics", func(t *testing.T) {
-		repo.EXPECT().ReadAllGauges().Return(map[string]float64{"test": 123}, nil)
+		strg.EXPECT().ReadAllGauges().Return(map[string]float64{"test": 123}, nil)
 		ms, err := mservice.GetAllGaugeMetrics()
 		require.Nil(t, err)
 		require.NotEmpty(t, ms)
@@ -59,7 +56,7 @@ func TestMetricService(t *testing.T) {
 	})
 
 	t.Run("get all counter metrics", func(t *testing.T) {
-		repo.EXPECT().ReadAllCounters().Return(map[string]int64{"test": 123}, nil)
+		strg.EXPECT().ReadAllCounters().Return(map[string]int64{"test": 123}, nil)
 		ms, err := mservice.GetAllCounterMetrics()
 		require.Nil(t, err)
 		require.NotEmpty(t, ms)
