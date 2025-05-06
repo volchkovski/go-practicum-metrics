@@ -97,7 +97,7 @@ func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
 }
 
 func (a *Agent) postMetrics(metrics []*m.Metrics) error {
-	url := "http://" + a.serverAddr + "/updates"
+	url := "http://" + a.serverAddr + "/updates/"
 
 	p, err := json.Marshal(metrics)
 	if err != nil {
