@@ -87,7 +87,7 @@ func (ms *MetricService) PushMetrics(gauges []*m.GaugeMetric, counters []*m.Coun
 		gs[gauge.Name] = gauge.Value
 	}
 	for _, counter := range counters {
-		cs[counter.Name] = counter.Value
+		cs[counter.Name] += counter.Value
 	}
 
 	if err := ms.strg.WriteGaugesCounters(gs, cs); err != nil {
