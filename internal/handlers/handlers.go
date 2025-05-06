@@ -171,28 +171,17 @@ func collectMetricJSON(s MetricPusher, metric m.Metrics) error {
 
 func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var metric m.Metrics
+		metric := new(m.Metrics)
 
-		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(metric); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		switch MetricType(metric.MType) {
-		case GaugeType:
-			gm, err := s.GetGaugeMetric(metric.ID)
-			if err != nil {
-				http.NotFound(w, r)
-				return
-			}
-			metric.Value = &gm.Value
-		case CounterType:
-			cm, err := s.GetCounterMetric(metric.ID)
-			if err != nil {
-				http.NotFound(w, r)
-				return
-			}
-			metric.Delta = &cm.Value
+		metric, err := metricJSON(s, metric)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -202,6 +191,26 @@ func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 			return
 		}
 	}
+}
+
+func metricJSON(s MetricGetter, metric *m.Metrics) (*m.Metrics, error) {
+	switch MetricType(metric.MType) {
+	case GaugeType:
+		gm, err := s.GetGaugeMetric(metric.ID)
+		if err != nil {
+			return nil, err
+		}
+		metric.Value = &gm.Value
+	case CounterType:
+		cm, err := s.GetCounterMetric(metric.ID)
+		if err != nil {
+			return nil, err
+		}
+		metric.Delta = &cm.Value
+	default:
+		return nil, fmt.Errorf("invalid metric type. Allowed: %s, %s", GaugeType, CounterType)
+	}
+	return metric, nil
 }
 
 func PingDB(s DBPinger) http.HandlerFunc {

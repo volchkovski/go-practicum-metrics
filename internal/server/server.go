@@ -32,10 +32,12 @@ func Run(cfg *configs.ServerConfig) (err error) {
 	var strg services.MetricStorage
 	if cfg.DSN == "" {
 		strg = storage.NewMemStorage()
+		logger.Log.Infoln("Memory storage in use")
 	} else {
 		if strg, err = pg.New(cfg.DSN); err != nil {
 			return
 		}
+		logger.Log.Infoln("Postgres storage in use")
 	}
 	service := services.NewMetricService(strg)
 	defer func() {

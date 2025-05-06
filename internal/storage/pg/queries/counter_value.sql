@@ -1,1 +1,1 @@
-SELECT value FROM counters WHERE name = '$1';
+SELECT value FROM counters WHERE name = $1;
