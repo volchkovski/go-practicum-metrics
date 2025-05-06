@@ -1,0 +1,1 @@
+SELECT value FROM gauges WHERE name = '$1';

@@ -141,3 +141,17 @@ func (mr *MockmetricsProcessorMockRecorder) PushGaugeMetric(arg0 any) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushGaugeMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).PushGaugeMetric), arg0)
 }
+
+// PushMetrics mocks base method.
+func (m *MockmetricsProcessor) PushMetrics(arg0 []*models.GaugeMetric, arg1 []*models.CounterMetric) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PushMetrics", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PushMetrics indicates an expected call of PushMetrics.
+func (mr *MockmetricsProcessorMockRecorder) PushMetrics(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).PushMetrics), arg0, arg1)
+}

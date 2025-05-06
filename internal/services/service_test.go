@@ -14,7 +14,7 @@ func TestMetricService(t *testing.T) {
 	repo := NewMockMetricsReadWriter(ctrl1)
 
 	ctrl2 := gomock.NewController(t)
-	db := NewMockPinger(ctrl2)
+	db := NewMockPgWriter(ctrl2)
 
 	mservice := NewMetricService(repo, db)
 

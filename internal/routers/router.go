@@ -12,6 +12,7 @@ type metricsProcessor interface {
 	handlers.MetricGetter
 	handlers.MetricPusher
 	handlers.AllMetricsGetter
+	handlers.MetricsPusher
 	handlers.DBPinger
 }
 
@@ -20,6 +21,7 @@ func NewMetricRouter(s metricsProcessor) chi.Router {
 	r.Use(mw.WithLogging)
 	r.With(mw.WithCompress).Get(`/`, handlers.AllMetricsHandler(s))
 	r.Get(`/ping`, handlers.PingDB(s))
+	r.With(mw.WithCompress).Post(`/updates`, handlers.CollectMetricsHandlerJSON(s))
 	r.Route(`/update`, func(r chi.Router) {
 		r.With(mw.WithCompress).Post(`/`, handlers.CollectMetricHandlerJSON(s))
 		r.Route(`/{tp}`, func(r chi.Router) {

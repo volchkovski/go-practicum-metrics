@@ -8,10 +8,10 @@ import (
 
 type MetricService struct {
 	repo MetricsReadWriter
-	db   Pinger
+	db   PgWriter
 }
 
-func NewMetricService(repo MetricsReadWriter, db Pinger) *MetricService {
+func NewMetricService(repo MetricsReadWriter, db PgWriter) *MetricService {
 	return &MetricService{
 		repo: repo,
 		db:   db,
@@ -78,6 +78,23 @@ func (ms *MetricService) PingDB() error {
 	}
 	if err := ms.db.Ping(); err != nil {
 		return fmt.Errorf("DB is not connected: %w", err)
+	}
+	return nil
+}
+
+func (ms *MetricService) PushMetrics(gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+	gs := make(map[string]float64)
+	cs := make(map[string]int64)
+
+	for _, gauge := range gauges {
+		gs[gauge.Name] = gauge.Value
+	}
+	for _, counter := range counters {
+		cs[counter.Name] = counter.Value
+	}
+
+	if err := ms.db.WriteGaugesCounters(gs, cs); err != nil {
+		return fmt.Errorf("failed to write gauges and counters: %w", err)
 	}
 	return nil
 }

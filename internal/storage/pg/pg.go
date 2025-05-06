@@ -22,7 +22,9 @@ func New(dsn string) (*Pg, error) {
 	if err = pginit.Initialize(db); err != nil {
 		return nil, fmt.Errorf("failed to initialize tables: %w", err)
 	}
-
+	if err = loadQueries(); err != nil {
+		return nil, fmt.Errorf("failed to load queries: %w", err)
+	}
 	return &Pg{db}, nil
 }
 
@@ -35,31 +37,18 @@ func (pg *Pg) Close() error {
 }
 
 func (pg *Pg) WriteGauge(name string, value float64) error {
-	query := `
-	INSERT INTO gauges (name, value)
-	VALUES ($1, $2)
-	ON CONFLICT (name)
-	DO UPDATE SET value = EXCLUDED.value;
-	`
-	_, err := pg.db.Exec(query, name, value)
+	_, err := pg.db.Exec(q.InsertGauge, name, value)
 	return err
 }
 
 func (pg *Pg) WriteCounter(name string, value int64) error {
-	query := `
-	INSERT INTO counters (name, value)
-	VALUES ($1, $2)
-	ON CONFLICT (name)
-	DO UPDATE SET value = counters.value + EXCLUDED.value;
-	`
-	_, err := pg.db.Exec(query, name, value)
+	_, err := pg.db.Exec(q.InsertCounter, name, value)
 	return err
 }
 
 func (pg *Pg) ReadGauge(name string) (float64, error) {
-	query := `SELECT value FROM gauges WHERE name = '$1';`
 	var v float64
-	if err := pg.db.QueryRow(query, name).Scan(&v); err != nil {
+	if err := pg.db.QueryRow(q.SelectGaugeValue, name).Scan(&v); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, fmt.Errorf("%s not found", name)
 		}
@@ -69,9 +58,8 @@ func (pg *Pg) ReadGauge(name string) (float64, error) {
 }
 
 func (pg *Pg) ReadCounter(name string) (int64, error) {
-	query := `SELECT value FROM counters WHERE name = '$1';`
 	var v int64
-	if err := pg.db.QueryRow(query, name).Scan(&v); err != nil {
+	if err := pg.db.QueryRow(q.SelectCounterValue, name).Scan(&v); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, fmt.Errorf("not found %s", name)
 		}
@@ -81,9 +69,8 @@ func (pg *Pg) ReadCounter(name string) (int64, error) {
 }
 
 func (pg *Pg) ReadAllGauges() (gauges map[string]float64, err error) {
-	query := `SELECT name, value FROM gauges;`
-
-	rows, err := pg.db.Query(query)
+	gauges = make(map[string]float64)
+	rows, err := pg.db.Query(q.SelectGauges)
 	if err != nil {
 		return
 	}
@@ -112,9 +99,8 @@ func (pg *Pg) ReadAllGauges() (gauges map[string]float64, err error) {
 }
 
 func (pg *Pg) ReadAllCounters() (counters map[string]int64, err error) {
-	query := `SELECT name, value FROM counters;`
-
-	rows, err := pg.db.Query(query)
+	counters = make(map[string]int64)
+	rows, err := pg.db.Query(q.SelectCounters)
 	if err != nil {
 		return
 	}
@@ -140,4 +126,42 @@ func (pg *Pg) ReadAllCounters() (counters map[string]int64, err error) {
 		return
 	}
 	return
+}
+
+func (pg *Pg) WriteGaugesCounters(gauges map[string]float64, counters map[string]int64) (err error) {
+	tx, err := pg.db.Begin()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		if errRB := tx.Rollback(); errRB != nil {
+			err = errors.Join(err, errRB)
+		}
+	}()
+
+	ggStmt, err := tx.Prepare(q.InsertGauge)
+	if err != nil {
+		return
+	}
+	for nm, v := range gauges {
+		if _, err = ggStmt.Exec(nm, v); err != nil {
+			return
+		}
+	}
+
+	cntStmt, err := tx.Prepare(q.InsertCounter)
+	if err != nil {
+		return
+	}
+
+	for nm, v := range counters {
+		if _, err = cntStmt.Exec(nm, v); err != nil {
+			return
+		}
+	}
+
+	return tx.Commit()
 }

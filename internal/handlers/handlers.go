@@ -13,10 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type DBPinger interface {
-	PingDB() error
-}
-
 func CollectMetricHandler(s MetricPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -213,6 +209,45 @@ func PingDB(s DBPinger) http.HandlerFunc {
 		if err := s.PingDB(); err != nil {
 			logger.Log.Infof("PingDB error: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func CollectMetricsHandlerJSON(s MetricsPusher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metrics []m.Metrics
+		if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+			logger.Log.Errorf("collectMetricsHandlerJson - failed to decode request body: %s", err.Error())
+			http.Error(w, "Failed to decode request body", http.StatusInternalServerError)
+			return
+		}
+		gauges := make([]*m.GaugeMetric, 0, 50)
+		counters := make([]*m.CounterMetric, 0, 10)
+		for _, metric := range metrics {
+			switch MetricType(metric.MType) {
+			case GaugeType:
+				gauge := m.GaugeMetric{
+					Name:  metric.ID,
+					Value: *metric.Value,
+				}
+				gauges = append(gauges, &gauge)
+			case CounterType:
+				counter := m.CounterMetric{
+					Name:  metric.ID,
+					Value: *metric.Delta,
+				}
+				counters = append(counters, &counter)
+			default:
+				msg := fmt.Sprintf("Invalid metric type %s. Allowed metric types: %s, %s", metric.MType, GaugeType, CounterType)
+				http.Error(w, msg, http.StatusBadRequest)
+				return
+			}
+		}
+		if err := s.PushMetrics(gauges, counters); err != nil {
+			logger.Log.Errorf("Failed to push metrics: %s", err.Error())
+			http.Error(w, "Error during metrics pushing", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

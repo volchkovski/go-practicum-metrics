@@ -1,0 +1,1 @@
+SELECT value FROM counters WHERE name = '$1';
