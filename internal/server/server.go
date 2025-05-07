@@ -14,7 +14,7 @@ import (
 	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	"github.com/volchkovski/go-practicum-metrics/internal/routers"
 	"github.com/volchkovski/go-practicum-metrics/internal/services"
-	"github.com/volchkovski/go-practicum-metrics/internal/storage"
+	"github.com/volchkovski/go-practicum-metrics/internal/storage/mem"
 	"github.com/volchkovski/go-practicum-metrics/internal/storage/pg"
 )
 
@@ -31,7 +31,7 @@ func Run(cfg *configs.ServerConfig) (err error) {
 
 	var strg services.MetricStorage
 	if cfg.DSN == "" {
-		strg = storage.NewMemStorage()
+		strg = mem.NewMemStorage()
 		logger.Log.Infoln("Memory storage in use")
 	} else {
 		if strg, err = pg.New(cfg.DSN); err != nil {

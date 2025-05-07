@@ -337,3 +337,46 @@ func TestRouterMetricJSON(t *testing.T) {
 		t.Run(tc.name, testIter(ts, tc))
 	}
 }
+
+func TestRouterMetricsJSON(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+
+	service := NewMockmetricsProcessor(mockCtl)
+	r := NewMetricRouter(service)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/json")
+	tests := []test{
+		{
+			name:   "post gauge and counter metrics",
+			path:   "/updates/",
+			method: http.MethodPost,
+			body: `[
+				{"id": "testGauge1", "type": "gauge", "value": 1.0},
+				{"id": "testCounter1", "type": "counter", "delta": 1}
+			]`,
+			headers: headers,
+			mock: func() {
+				service.EXPECT().PushMetrics(
+					[]*m.GaugeMetric{
+						{Name: "testGauge1", Value: 1.0},
+					},
+					[]*m.CounterMetric{
+						{Name: "testCounter1", Value: 1},
+					},
+				).Return(nil)
+			},
+			expected: expected{
+				contentType: "",
+				status:      http.StatusOK,
+				body:        "",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, testIter(ts, tc))
+	}
+}

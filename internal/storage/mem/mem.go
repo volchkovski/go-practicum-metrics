@@ -1,4 +1,4 @@
-package storage
+package mem
 
 import (
 	"fmt"

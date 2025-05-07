@@ -18,12 +18,6 @@ import (
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
-var headers = map[string]string{
-	"Accept-Encoding":  "",
-	"Content-Encoding": "gzip",
-	"Content-Type":     "application/json",
-}
-
 type Agent struct {
 	memStats   *runtime.MemStats
 	repIntr    time.Duration
@@ -40,7 +34,7 @@ func New(cfg *configs.AgentConfig) *Agent {
 		pollIntr:   time.Duration(cfg.PollIntr) * time.Second,
 		serverAddr: cfg.ServerAddr,
 		pollCount:  0,
-		client:     resty.New().SetHeaders(headers),
+		client:     NewRestyClient(),
 	}
 }
 
