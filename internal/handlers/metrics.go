@@ -21,7 +21,15 @@ type MetricPusher interface {
 	PushCounterMetric(*m.CounterMetric) error
 }
 
+type MetricsPusher interface {
+	PushMetrics([]*m.GaugeMetric, []*m.CounterMetric) error
+}
+
 type AllMetricsGetter interface {
 	GetAllGaugeMetrics() ([]*m.GaugeMetric, error)
 	GetAllCounterMetrics() ([]*m.CounterMetric, error)
+}
+
+type DBPinger interface {
+	PingDB() error
 }
