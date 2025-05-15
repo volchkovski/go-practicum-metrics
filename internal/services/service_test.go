@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,37 +16,39 @@ func TestMetricService(t *testing.T) {
 
 	mservice := NewMetricService(strg)
 
+	ctx := context.Background()
+
 	t.Run("get gauge metric", func(t *testing.T) {
-		strg.EXPECT().ReadGauge("test").Return(float64(123), nil)
-		m, err := mservice.GetGaugeMetric("test")
+		strg.EXPECT().ReadGauge(ctx, "test").Return(float64(123), nil)
+		m, err := mservice.GetGaugeMetric(ctx, "test")
 		require.Nil(t, err)
 		require.NotNil(t, m)
 		assert.Equal(t, models.GaugeMetric{Name: "test", Value: float64(123)}, *m)
 	})
 
 	t.Run("get counter metric", func(t *testing.T) {
-		strg.EXPECT().ReadCounter("test").Return(int64(123), nil)
-		m, err := mservice.GetCounterMetric("test")
+		strg.EXPECT().ReadCounter(ctx, "test").Return(int64(123), nil)
+		m, err := mservice.GetCounterMetric(ctx, "test")
 		require.Nil(t, err)
 		require.NotNil(t, m)
 		assert.Equal(t, models.CounterMetric{Name: "test", Value: int64(123)}, *m)
 	})
 
 	t.Run("push gauge metric", func(t *testing.T) {
-		strg.EXPECT().WriteGauge("test", float64(123)).Return(nil)
-		err := mservice.PushGaugeMetric(&models.GaugeMetric{Name: "test", Value: float64(123)})
+		strg.EXPECT().WriteGauge(ctx, "test", float64(123)).Return(nil)
+		err := mservice.PushGaugeMetric(ctx, &models.GaugeMetric{Name: "test", Value: float64(123)})
 		require.Nil(t, err)
 	})
 
 	t.Run("push counter metric", func(t *testing.T) {
-		strg.EXPECT().WriteCounter("test", int64(123)).Return(nil)
-		err := mservice.PushCounterMetric(&models.CounterMetric{Name: "test", Value: int64(123)})
+		strg.EXPECT().WriteCounter(ctx, "test", int64(123)).Return(nil)
+		err := mservice.PushCounterMetric(ctx, &models.CounterMetric{Name: "test", Value: int64(123)})
 		require.Nil(t, err)
 	})
 
 	t.Run("get all gauge metrics", func(t *testing.T) {
-		strg.EXPECT().ReadAllGauges().Return(map[string]float64{"test": 123}, nil)
-		ms, err := mservice.GetAllGaugeMetrics()
+		strg.EXPECT().ReadAllGauges(ctx).Return(map[string]float64{"test": 123}, nil)
+		ms, err := mservice.GetAllGaugeMetrics(ctx)
 		require.Nil(t, err)
 		require.NotEmpty(t, ms)
 		var gauges []models.GaugeMetric
@@ -56,8 +59,8 @@ func TestMetricService(t *testing.T) {
 	})
 
 	t.Run("get all counter metrics", func(t *testing.T) {
-		strg.EXPECT().ReadAllCounters().Return(map[string]int64{"test": 123}, nil)
-		ms, err := mservice.GetAllCounterMetrics()
+		strg.EXPECT().ReadAllCounters(ctx).Return(map[string]int64{"test": 123}, nil)
+		ms, err := mservice.GetAllCounterMetrics(ctx)
 		require.Nil(t, err)
 		require.NotEmpty(t, ms)
 		var counters []models.CounterMetric

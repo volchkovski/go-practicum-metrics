@@ -10,6 +10,7 @@
 package routers
 
 import (
+	context "context"
 	reflect "reflect"
 
 	models "github.com/volchkovski/go-practicum-metrics/internal/models"
@@ -41,117 +42,117 @@ func (m *MockmetricsProcessor) EXPECT() *MockmetricsProcessorMockRecorder {
 }
 
 // GetAllCounterMetrics mocks base method.
-func (m *MockmetricsProcessor) GetAllCounterMetrics() ([]*models.CounterMetric, error) {
+func (m *MockmetricsProcessor) GetAllCounterMetrics(arg0 context.Context) ([]*models.CounterMetric, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllCounterMetrics")
+	ret := m.ctrl.Call(m, "GetAllCounterMetrics", arg0)
 	ret0, _ := ret[0].([]*models.CounterMetric)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAllCounterMetrics indicates an expected call of GetAllCounterMetrics.
-func (mr *MockmetricsProcessorMockRecorder) GetAllCounterMetrics() *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) GetAllCounterMetrics(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllCounterMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).GetAllCounterMetrics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllCounterMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).GetAllCounterMetrics), arg0)
 }
 
 // GetAllGaugeMetrics mocks base method.
-func (m *MockmetricsProcessor) GetAllGaugeMetrics() ([]*models.GaugeMetric, error) {
+func (m *MockmetricsProcessor) GetAllGaugeMetrics(arg0 context.Context) ([]*models.GaugeMetric, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllGaugeMetrics")
+	ret := m.ctrl.Call(m, "GetAllGaugeMetrics", arg0)
 	ret0, _ := ret[0].([]*models.GaugeMetric)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAllGaugeMetrics indicates an expected call of GetAllGaugeMetrics.
-func (mr *MockmetricsProcessorMockRecorder) GetAllGaugeMetrics() *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) GetAllGaugeMetrics(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllGaugeMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).GetAllGaugeMetrics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllGaugeMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).GetAllGaugeMetrics), arg0)
 }
 
 // GetCounterMetric mocks base method.
-func (m *MockmetricsProcessor) GetCounterMetric(arg0 string) (*models.CounterMetric, error) {
+func (m *MockmetricsProcessor) GetCounterMetric(arg0 context.Context, arg1 string) (*models.CounterMetric, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCounterMetric", arg0)
+	ret := m.ctrl.Call(m, "GetCounterMetric", arg0, arg1)
 	ret0, _ := ret[0].(*models.CounterMetric)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCounterMetric indicates an expected call of GetCounterMetric.
-func (mr *MockmetricsProcessorMockRecorder) GetCounterMetric(arg0 any) *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) GetCounterMetric(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).GetCounterMetric), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).GetCounterMetric), arg0, arg1)
 }
 
 // GetGaugeMetric mocks base method.
-func (m *MockmetricsProcessor) GetGaugeMetric(arg0 string) (*models.GaugeMetric, error) {
+func (m *MockmetricsProcessor) GetGaugeMetric(arg0 context.Context, arg1 string) (*models.GaugeMetric, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGaugeMetric", arg0)
+	ret := m.ctrl.Call(m, "GetGaugeMetric", arg0, arg1)
 	ret0, _ := ret[0].(*models.GaugeMetric)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetGaugeMetric indicates an expected call of GetGaugeMetric.
-func (mr *MockmetricsProcessorMockRecorder) GetGaugeMetric(arg0 any) *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) GetGaugeMetric(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGaugeMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).GetGaugeMetric), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGaugeMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).GetGaugeMetric), arg0, arg1)
 }
 
 // PingDB mocks base method.
-func (m *MockmetricsProcessor) PingDB() error {
+func (m *MockmetricsProcessor) PingDB(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PingDB")
+	ret := m.ctrl.Call(m, "PingDB", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PingDB indicates an expected call of PingDB.
-func (mr *MockmetricsProcessorMockRecorder) PingDB() *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) PingDB(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingDB", reflect.TypeOf((*MockmetricsProcessor)(nil).PingDB))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingDB", reflect.TypeOf((*MockmetricsProcessor)(nil).PingDB), arg0)
 }
 
 // PushCounterMetric mocks base method.
-func (m *MockmetricsProcessor) PushCounterMetric(arg0 *models.CounterMetric) error {
+func (m *MockmetricsProcessor) PushCounterMetric(arg0 context.Context, arg1 *models.CounterMetric) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PushCounterMetric", arg0)
+	ret := m.ctrl.Call(m, "PushCounterMetric", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PushCounterMetric indicates an expected call of PushCounterMetric.
-func (mr *MockmetricsProcessorMockRecorder) PushCounterMetric(arg0 any) *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) PushCounterMetric(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushCounterMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).PushCounterMetric), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushCounterMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).PushCounterMetric), arg0, arg1)
 }
 
 // PushGaugeMetric mocks base method.
-func (m *MockmetricsProcessor) PushGaugeMetric(arg0 *models.GaugeMetric) error {
+func (m *MockmetricsProcessor) PushGaugeMetric(arg0 context.Context, arg1 *models.GaugeMetric) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PushGaugeMetric", arg0)
+	ret := m.ctrl.Call(m, "PushGaugeMetric", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PushGaugeMetric indicates an expected call of PushGaugeMetric.
-func (mr *MockmetricsProcessorMockRecorder) PushGaugeMetric(arg0 any) *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) PushGaugeMetric(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushGaugeMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).PushGaugeMetric), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushGaugeMetric", reflect.TypeOf((*MockmetricsProcessor)(nil).PushGaugeMetric), arg0, arg1)
 }
 
 // PushMetrics mocks base method.
-func (m *MockmetricsProcessor) PushMetrics(arg0 []*models.GaugeMetric, arg1 []*models.CounterMetric) error {
+func (m *MockmetricsProcessor) PushMetrics(arg0 context.Context, arg1 []*models.GaugeMetric, arg2 []*models.CounterMetric) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PushMetrics", arg0, arg1)
+	ret := m.ctrl.Call(m, "PushMetrics", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PushMetrics indicates an expected call of PushMetrics.
-func (mr *MockmetricsProcessorMockRecorder) PushMetrics(arg0, arg1 any) *gomock.Call {
+func (mr *MockmetricsProcessorMockRecorder) PushMetrics(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).PushMetrics), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushMetrics", reflect.TypeOf((*MockmetricsProcessor)(nil).PushMetrics), arg0, arg1, arg2)
 }

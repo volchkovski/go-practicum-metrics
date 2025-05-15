@@ -1,114 +1,82 @@
 package pg
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/volchkovski/go-practicum-metrics/internal/storage/pg/migrator"
 	"time"
 
-	pginit "github.com/volchkovski/go-practicum-metrics/internal/storage/pg/init"
-
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var backoffs = []time.Duration{
-	0 * time.Second,
-	1 * time.Second,
-	3 * time.Second,
-	5 * time.Second,
-}
+const (
+	MaxOpenConns = 5
+	MaxIdleConns
+	MaxLifetime = 5 * time.Minute
+	MaxIdleTime = 10 * time.Minute
+)
 
 type Pg struct {
 	db *sql.DB
 }
 
+func configureConnPool(db *sql.DB) {
+	db.SetMaxOpenConns(MaxOpenConns)
+	db.SetMaxIdleConns(MaxIdleConns)
+	db.SetConnMaxLifetime(MaxLifetime)
+	db.SetConnMaxIdleTime(MaxIdleTime)
+}
+
 func New(dsn string) (*Pg, error) {
+	if err := migrator.Run(dsn); err != nil {
+		return nil, fmt.Errorf("migrations failed: %w", err)
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
-	if err = pginit.Initialize(db); err != nil {
-		return nil, fmt.Errorf("failed to initialize tables: %w", err)
-	}
-	if err = loadQueries(); err != nil {
+	configureConnPool(db)
+	if err := loadQueries(); err != nil {
 		return nil, fmt.Errorf("failed to load queries: %w", err)
 	}
 	return &Pg{db}, nil
 }
 
-func (pg *Pg) Ping() error {
-	return pg.db.Ping()
+func (pg *Pg) Ping(ctx context.Context) error {
+	return pg.db.PingContext(ctx)
 }
 
 func (pg *Pg) Close() error {
 	return pg.db.Close()
 }
 
-func (pg *Pg) WriteGauge(name string, value float64) (err error) {
-	for _, backoff := range backoffs {
-		_, err = pg.db.Exec(q.InsertGauge, name, value)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
-	return
+func (pg *Pg) WriteGauge(ctx context.Context, name string, value float64) error {
+	_, err := pg.db.ExecContext(ctx, q.InsertGauge, name, value)
+	return err
 }
 
-func (pg *Pg) WriteCounter(name string, value int64) (err error) {
-	for _, backoff := range backoffs {
-		_, err = pg.db.Exec(q.InsertCounter, name, value)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
-	return
+func (pg *Pg) WriteCounter(ctx context.Context, name string, value int64) error {
+	_, err := pg.db.ExecContext(ctx, q.InsertCounter, name, value)
+	return err
 }
 
-func (pg *Pg) ReadGauge(name string) (val float64, err error) {
-	for _, backoff := range backoffs {
-		err = pg.db.QueryRow(q.SelectGaugeValue, name).Scan(&val)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
-	return
+func (pg *Pg) ReadGauge(ctx context.Context, name string) (float64, error) {
+	var val float64
+	err := pg.db.QueryRowContext(ctx, q.SelectGaugeValue, name).Scan(&val)
+	return val, err
 }
 
-func (pg *Pg) ReadCounter(name string) (val int64, err error) {
-	for _, backoff := range backoffs {
-		err = pg.db.QueryRow(q.SelectCounterValue, name).Scan(&val)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
-	return
+func (pg *Pg) ReadCounter(ctx context.Context, name string) (int64, error) {
+	var val int64
+	err := pg.db.QueryRowContext(ctx, q.SelectCounterValue, name).Scan(&val)
+	return val, err
 }
 
-func (pg *Pg) ReadAllGauges() (gauges map[string]float64, err error) {
+func (pg *Pg) ReadAllGauges(ctx context.Context) (gauges map[string]float64, err error) {
 	var rows *sql.Rows
-	for _, backoff := range backoffs {
-		rows, err = pg.db.Query(q.SelectGauges)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
+	rows, err = pg.db.QueryContext(ctx, q.SelectGauges)
 	if err != nil {
 		return
 	}
@@ -135,17 +103,9 @@ func (pg *Pg) ReadAllGauges() (gauges map[string]float64, err error) {
 	return
 }
 
-func (pg *Pg) ReadAllCounters() (counters map[string]int64, err error) {
+func (pg *Pg) ReadAllCounters(ctx context.Context) (counters map[string]int64, err error) {
 	var rows *sql.Rows
-	for _, backoff := range backoffs {
-		rows, err = pg.db.Query(q.SelectCounters)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
+	rows, err = pg.db.QueryContext(ctx, q.SelectCounters)
 	if err != nil {
 		return
 	}
@@ -172,7 +132,7 @@ func (pg *Pg) ReadAllCounters() (counters map[string]int64, err error) {
 	return
 }
 
-func (pg *Pg) WriteGaugesCounters(gauges map[string]float64, counters map[string]int64) (err error) {
+func (pg *Pg) WriteGaugesCounters(ctx context.Context, gauges map[string]float64, counters map[string]int64) (err error) {
 	tx, err := pg.db.Begin()
 	if err != nil {
 		return
@@ -186,7 +146,7 @@ func (pg *Pg) WriteGaugesCounters(gauges map[string]float64, counters map[string
 		}
 	}()
 
-	ggStmt, err := tx.Prepare(q.InsertGauge)
+	ggStmt, err := tx.PrepareContext(ctx, q.InsertGauge)
 	if err != nil {
 		return
 	}
@@ -196,7 +156,7 @@ func (pg *Pg) WriteGaugesCounters(gauges map[string]float64, counters map[string
 		}
 	}
 
-	cntStmt, err := tx.Prepare(q.InsertCounter)
+	cntStmt, err := tx.PrepareContext(ctx, q.InsertCounter)
 	if err != nil {
 		return
 	}
@@ -207,14 +167,6 @@ func (pg *Pg) WriteGaugesCounters(gauges map[string]float64, counters map[string
 		}
 	}
 
-	for _, backoff := range backoffs {
-		err = tx.Commit()
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
-			time.Sleep(backoff)
-			continue
-		}
-		break
-	}
+	err = tx.Commit()
 	return
 }

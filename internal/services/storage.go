@@ -1,5 +1,7 @@
 package services
 
+import "context"
+
 type MetricStorage interface {
 	MetricsReader
 	MetricsWriter
@@ -14,24 +16,24 @@ type Closer interface {
 }
 
 type AllMetricsReader interface {
-	ReadAllGauges() (map[string]float64, error)
-	ReadAllCounters() (map[string]int64, error)
+	ReadAllGauges(context.Context) (map[string]float64, error)
+	ReadAllCounters(context.Context) (map[string]int64, error)
 }
 
 type MetricsReader interface {
-	ReadGauge(string) (float64, error)
-	ReadCounter(string) (int64, error)
+	ReadGauge(context.Context, string) (float64, error)
+	ReadCounter(context.Context, string) (int64, error)
 }
 
 type MetricsWriter interface {
-	WriteGauge(string, float64) error
-	WriteCounter(string, int64) error
+	WriteGauge(context.Context, string, float64) error
+	WriteCounter(context.Context, string, int64) error
 }
 
 type Pinger interface {
-	Ping() error
+	Ping(context.Context) error
 }
 
 type GaugesCountersWriter interface {
-	WriteGaugesCounters(gauges map[string]float64, counters map[string]int64) error
+	WriteGaugesCounters(ctx context.Context, gauges map[string]float64, counters map[string]int64) error
 }

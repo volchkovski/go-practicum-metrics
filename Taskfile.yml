@@ -3,7 +3,7 @@ version: '3'
 tasks:
   runserver:
     cmds:
-      - go run ./cmd/server/main.go -l debug -d "user=postgres password=postgres host=localhost port=5432 dbname=postgres sslmode=disable"
+      - go run ./cmd/server/main.go -l debug -d "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
   runagent:
     cmds:
       - go run ./cmd/agent/main.go

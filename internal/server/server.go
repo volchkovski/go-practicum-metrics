@@ -35,6 +35,7 @@ func Run(cfg *configs.ServerConfig) (err error) {
 		logger.Log.Infoln("Memory storage in use")
 	} else {
 		if strg, err = pg.New(cfg.DSN); err != nil {
+			logger.Log.Errorf("Postgres creation failed: %s", err.Error())
 			return
 		}
 		logger.Log.Infoln("Postgres storage in use")

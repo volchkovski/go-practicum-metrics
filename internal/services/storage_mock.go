@@ -10,6 +10,7 @@
 package services
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -54,119 +55,119 @@ func (mr *MockMetricStorageMockRecorder) Close() *gomock.Call {
 }
 
 // Ping mocks base method.
-func (m *MockMetricStorage) Ping() error {
+func (m *MockMetricStorage) Ping(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping")
+	ret := m.ctrl.Call(m, "Ping", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Ping indicates an expected call of Ping.
-func (mr *MockMetricStorageMockRecorder) Ping() *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) Ping(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockMetricStorage)(nil).Ping))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockMetricStorage)(nil).Ping), arg0)
 }
 
 // ReadAllCounters mocks base method.
-func (m *MockMetricStorage) ReadAllCounters() (map[string]int64, error) {
+func (m *MockMetricStorage) ReadAllCounters(arg0 context.Context) (map[string]int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadAllCounters")
+	ret := m.ctrl.Call(m, "ReadAllCounters", arg0)
 	ret0, _ := ret[0].(map[string]int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadAllCounters indicates an expected call of ReadAllCounters.
-func (mr *MockMetricStorageMockRecorder) ReadAllCounters() *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) ReadAllCounters(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllCounters", reflect.TypeOf((*MockMetricStorage)(nil).ReadAllCounters))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllCounters", reflect.TypeOf((*MockMetricStorage)(nil).ReadAllCounters), arg0)
 }
 
 // ReadAllGauges mocks base method.
-func (m *MockMetricStorage) ReadAllGauges() (map[string]float64, error) {
+func (m *MockMetricStorage) ReadAllGauges(arg0 context.Context) (map[string]float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadAllGauges")
+	ret := m.ctrl.Call(m, "ReadAllGauges", arg0)
 	ret0, _ := ret[0].(map[string]float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadAllGauges indicates an expected call of ReadAllGauges.
-func (mr *MockMetricStorageMockRecorder) ReadAllGauges() *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) ReadAllGauges(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllGauges", reflect.TypeOf((*MockMetricStorage)(nil).ReadAllGauges))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllGauges", reflect.TypeOf((*MockMetricStorage)(nil).ReadAllGauges), arg0)
 }
 
 // ReadCounter mocks base method.
-func (m *MockMetricStorage) ReadCounter(arg0 string) (int64, error) {
+func (m *MockMetricStorage) ReadCounter(arg0 context.Context, arg1 string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadCounter", arg0)
+	ret := m.ctrl.Call(m, "ReadCounter", arg0, arg1)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadCounter indicates an expected call of ReadCounter.
-func (mr *MockMetricStorageMockRecorder) ReadCounter(arg0 any) *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) ReadCounter(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadCounter", reflect.TypeOf((*MockMetricStorage)(nil).ReadCounter), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadCounter", reflect.TypeOf((*MockMetricStorage)(nil).ReadCounter), arg0, arg1)
 }
 
 // ReadGauge mocks base method.
-func (m *MockMetricStorage) ReadGauge(arg0 string) (float64, error) {
+func (m *MockMetricStorage) ReadGauge(arg0 context.Context, arg1 string) (float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadGauge", arg0)
+	ret := m.ctrl.Call(m, "ReadGauge", arg0, arg1)
 	ret0, _ := ret[0].(float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadGauge indicates an expected call of ReadGauge.
-func (mr *MockMetricStorageMockRecorder) ReadGauge(arg0 any) *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) ReadGauge(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadGauge", reflect.TypeOf((*MockMetricStorage)(nil).ReadGauge), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadGauge", reflect.TypeOf((*MockMetricStorage)(nil).ReadGauge), arg0, arg1)
 }
 
 // WriteCounter mocks base method.
-func (m *MockMetricStorage) WriteCounter(arg0 string, arg1 int64) error {
+func (m *MockMetricStorage) WriteCounter(arg0 context.Context, arg1 string, arg2 int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteCounter", arg0, arg1)
+	ret := m.ctrl.Call(m, "WriteCounter", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteCounter indicates an expected call of WriteCounter.
-func (mr *MockMetricStorageMockRecorder) WriteCounter(arg0, arg1 any) *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) WriteCounter(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteCounter", reflect.TypeOf((*MockMetricStorage)(nil).WriteCounter), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteCounter", reflect.TypeOf((*MockMetricStorage)(nil).WriteCounter), arg0, arg1, arg2)
 }
 
 // WriteGauge mocks base method.
-func (m *MockMetricStorage) WriteGauge(arg0 string, arg1 float64) error {
+func (m *MockMetricStorage) WriteGauge(arg0 context.Context, arg1 string, arg2 float64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteGauge", arg0, arg1)
+	ret := m.ctrl.Call(m, "WriteGauge", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteGauge indicates an expected call of WriteGauge.
-func (mr *MockMetricStorageMockRecorder) WriteGauge(arg0, arg1 any) *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) WriteGauge(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGauge", reflect.TypeOf((*MockMetricStorage)(nil).WriteGauge), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGauge", reflect.TypeOf((*MockMetricStorage)(nil).WriteGauge), arg0, arg1, arg2)
 }
 
 // WriteGaugesCounters mocks base method.
-func (m *MockMetricStorage) WriteGaugesCounters(gauges map[string]float64, counters map[string]int64) error {
+func (m *MockMetricStorage) WriteGaugesCounters(ctx context.Context, gauges map[string]float64, counters map[string]int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteGaugesCounters", gauges, counters)
+	ret := m.ctrl.Call(m, "WriteGaugesCounters", ctx, gauges, counters)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteGaugesCounters indicates an expected call of WriteGaugesCounters.
-func (mr *MockMetricStorageMockRecorder) WriteGaugesCounters(gauges, counters any) *gomock.Call {
+func (mr *MockMetricStorageMockRecorder) WriteGaugesCounters(ctx, gauges, counters any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGaugesCounters", reflect.TypeOf((*MockMetricStorage)(nil).WriteGaugesCounters), gauges, counters)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGaugesCounters", reflect.TypeOf((*MockMetricStorage)(nil).WriteGaugesCounters), ctx, gauges, counters)
 }
 
 // MockCloser is a mock of Closer interface.
@@ -232,33 +233,33 @@ func (m *MockAllMetricsReader) EXPECT() *MockAllMetricsReaderMockRecorder {
 }
 
 // ReadAllCounters mocks base method.
-func (m *MockAllMetricsReader) ReadAllCounters() (map[string]int64, error) {
+func (m *MockAllMetricsReader) ReadAllCounters(arg0 context.Context) (map[string]int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadAllCounters")
+	ret := m.ctrl.Call(m, "ReadAllCounters", arg0)
 	ret0, _ := ret[0].(map[string]int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadAllCounters indicates an expected call of ReadAllCounters.
-func (mr *MockAllMetricsReaderMockRecorder) ReadAllCounters() *gomock.Call {
+func (mr *MockAllMetricsReaderMockRecorder) ReadAllCounters(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllCounters", reflect.TypeOf((*MockAllMetricsReader)(nil).ReadAllCounters))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllCounters", reflect.TypeOf((*MockAllMetricsReader)(nil).ReadAllCounters), arg0)
 }
 
 // ReadAllGauges mocks base method.
-func (m *MockAllMetricsReader) ReadAllGauges() (map[string]float64, error) {
+func (m *MockAllMetricsReader) ReadAllGauges(arg0 context.Context) (map[string]float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadAllGauges")
+	ret := m.ctrl.Call(m, "ReadAllGauges", arg0)
 	ret0, _ := ret[0].(map[string]float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadAllGauges indicates an expected call of ReadAllGauges.
-func (mr *MockAllMetricsReaderMockRecorder) ReadAllGauges() *gomock.Call {
+func (mr *MockAllMetricsReaderMockRecorder) ReadAllGauges(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllGauges", reflect.TypeOf((*MockAllMetricsReader)(nil).ReadAllGauges))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAllGauges", reflect.TypeOf((*MockAllMetricsReader)(nil).ReadAllGauges), arg0)
 }
 
 // MockMetricsReader is a mock of MetricsReader interface.
@@ -286,33 +287,33 @@ func (m *MockMetricsReader) EXPECT() *MockMetricsReaderMockRecorder {
 }
 
 // ReadCounter mocks base method.
-func (m *MockMetricsReader) ReadCounter(arg0 string) (int64, error) {
+func (m *MockMetricsReader) ReadCounter(arg0 context.Context, arg1 string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadCounter", arg0)
+	ret := m.ctrl.Call(m, "ReadCounter", arg0, arg1)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadCounter indicates an expected call of ReadCounter.
-func (mr *MockMetricsReaderMockRecorder) ReadCounter(arg0 any) *gomock.Call {
+func (mr *MockMetricsReaderMockRecorder) ReadCounter(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadCounter", reflect.TypeOf((*MockMetricsReader)(nil).ReadCounter), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadCounter", reflect.TypeOf((*MockMetricsReader)(nil).ReadCounter), arg0, arg1)
 }
 
 // ReadGauge mocks base method.
-func (m *MockMetricsReader) ReadGauge(arg0 string) (float64, error) {
+func (m *MockMetricsReader) ReadGauge(arg0 context.Context, arg1 string) (float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadGauge", arg0)
+	ret := m.ctrl.Call(m, "ReadGauge", arg0, arg1)
 	ret0, _ := ret[0].(float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadGauge indicates an expected call of ReadGauge.
-func (mr *MockMetricsReaderMockRecorder) ReadGauge(arg0 any) *gomock.Call {
+func (mr *MockMetricsReaderMockRecorder) ReadGauge(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadGauge", reflect.TypeOf((*MockMetricsReader)(nil).ReadGauge), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadGauge", reflect.TypeOf((*MockMetricsReader)(nil).ReadGauge), arg0, arg1)
 }
 
 // MockMetricsWriter is a mock of MetricsWriter interface.
@@ -340,31 +341,31 @@ func (m *MockMetricsWriter) EXPECT() *MockMetricsWriterMockRecorder {
 }
 
 // WriteCounter mocks base method.
-func (m *MockMetricsWriter) WriteCounter(arg0 string, arg1 int64) error {
+func (m *MockMetricsWriter) WriteCounter(arg0 context.Context, arg1 string, arg2 int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteCounter", arg0, arg1)
+	ret := m.ctrl.Call(m, "WriteCounter", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteCounter indicates an expected call of WriteCounter.
-func (mr *MockMetricsWriterMockRecorder) WriteCounter(arg0, arg1 any) *gomock.Call {
+func (mr *MockMetricsWriterMockRecorder) WriteCounter(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteCounter", reflect.TypeOf((*MockMetricsWriter)(nil).WriteCounter), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteCounter", reflect.TypeOf((*MockMetricsWriter)(nil).WriteCounter), arg0, arg1, arg2)
 }
 
 // WriteGauge mocks base method.
-func (m *MockMetricsWriter) WriteGauge(arg0 string, arg1 float64) error {
+func (m *MockMetricsWriter) WriteGauge(arg0 context.Context, arg1 string, arg2 float64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteGauge", arg0, arg1)
+	ret := m.ctrl.Call(m, "WriteGauge", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteGauge indicates an expected call of WriteGauge.
-func (mr *MockMetricsWriterMockRecorder) WriteGauge(arg0, arg1 any) *gomock.Call {
+func (mr *MockMetricsWriterMockRecorder) WriteGauge(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGauge", reflect.TypeOf((*MockMetricsWriter)(nil).WriteGauge), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGauge", reflect.TypeOf((*MockMetricsWriter)(nil).WriteGauge), arg0, arg1, arg2)
 }
 
 // MockPinger is a mock of Pinger interface.
@@ -392,17 +393,17 @@ func (m *MockPinger) EXPECT() *MockPingerMockRecorder {
 }
 
 // Ping mocks base method.
-func (m *MockPinger) Ping() error {
+func (m *MockPinger) Ping(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping")
+	ret := m.ctrl.Call(m, "Ping", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Ping indicates an expected call of Ping.
-func (mr *MockPingerMockRecorder) Ping() *gomock.Call {
+func (mr *MockPingerMockRecorder) Ping(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockPinger)(nil).Ping))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockPinger)(nil).Ping), arg0)
 }
 
 // MockGaugesCountersWriter is a mock of GaugesCountersWriter interface.
@@ -430,15 +431,15 @@ func (m *MockGaugesCountersWriter) EXPECT() *MockGaugesCountersWriterMockRecorde
 }
 
 // WriteGaugesCounters mocks base method.
-func (m *MockGaugesCountersWriter) WriteGaugesCounters(gauges map[string]float64, counters map[string]int64) error {
+func (m *MockGaugesCountersWriter) WriteGaugesCounters(ctx context.Context, gauges map[string]float64, counters map[string]int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteGaugesCounters", gauges, counters)
+	ret := m.ctrl.Call(m, "WriteGaugesCounters", ctx, gauges, counters)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteGaugesCounters indicates an expected call of WriteGaugesCounters.
-func (mr *MockGaugesCountersWriterMockRecorder) WriteGaugesCounters(gauges, counters any) *gomock.Call {
+func (mr *MockGaugesCountersWriterMockRecorder) WriteGaugesCounters(ctx, gauges, counters any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGaugesCounters", reflect.TypeOf((*MockGaugesCountersWriter)(nil).WriteGaugesCounters), gauges, counters)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteGaugesCounters", reflect.TypeOf((*MockGaugesCountersWriter)(nil).WriteGaugesCounters), ctx, gauges, counters)
 }
