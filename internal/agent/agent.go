@@ -18,8 +18,6 @@ import (
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
-var headers = map[string]string{"Content-Encoding": "gzip", "Content-Type": "application/json"}
-
 type Agent struct {
 	memStats   *runtime.MemStats
 	repIntr    time.Duration
@@ -36,7 +34,7 @@ func New(cfg *configs.AgentConfig) *Agent {
 		pollIntr:   time.Duration(cfg.PollIntr) * time.Second,
 		serverAddr: cfg.ServerAddr,
 		pollCount:  0,
-		client:     resty.New().SetHeaders(headers),
+		client:     NewRestyClient(),
 	}
 }
 
@@ -54,23 +52,26 @@ func (a *Agent) Run() {
 }
 
 func (a *Agent) collectMetrics() {
-	for _, metric := range runtimeMetrics {
-		v, ok := gaugeVal(a.memStats, metric)
+	metrics := make([]*m.Metrics, 0, 50)
+	for _, metricName := range runtimeMetricNames {
+		v, ok := gaugeVal(a.memStats, metricName)
 		if !ok {
-			log.Printf("Failed to get gauge value for %s", metric)
+			log.Printf("Failed to get gauge value for %s", metricName)
 			continue
 		}
-		if err := a.postMetric(&m.Metrics{ID: metric, MType: "gauge", Value: &v}); err != nil {
-			log.Println(err)
-		}
+		metric := &m.Metrics{ID: metricName, MType: "gauge", Value: &v}
+		metrics = append(metrics, metric)
 	}
 	rv := getRandomFloat()
-	if err := a.postMetric(&m.Metrics{ID: "RandomValue", MType: "gauge", Value: &rv}); err != nil {
-		log.Printf("Failed to post RandomValue %s\n", err.Error())
-	}
+	metric := &m.Metrics{ID: "RandomValue", MType: "gauge", Value: &rv}
+	metrics = append(metrics, metric)
+
 	a.pollCount += 1
-	if err := a.postMetric(&m.Metrics{ID: "PollCount", MType: "counter", Delta: &a.pollCount}); err != nil {
-		log.Printf("Failed to post PollCount %s\n", err.Error())
+	metric = &m.Metrics{ID: "PollCount", MType: "counter", Delta: &a.pollCount}
+	metrics = append(metrics, metric)
+
+	if err := a.postMetrics(metrics); err != nil {
+		log.Printf("Failed to post metrics: %s", err.Error())
 	}
 }
 
@@ -89,10 +90,10 @@ func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
 	return float64(0), false
 }
 
-func (a *Agent) postMetric(metric *m.Metrics) error {
-	url := "http://" + a.serverAddr + "/update"
+func (a *Agent) postMetrics(metrics []*m.Metrics) error {
+	url := "http://" + a.serverAddr + "/updates/"
 
-	p, err := json.Marshal(metric)
+	p, err := json.Marshal(metrics)
 	if err != nil {
 		return err
 	}

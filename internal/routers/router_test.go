@@ -82,7 +82,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock: func() {
 				service.EXPECT().
-					PushGaugeMetric(&m.GaugeMetric{Name: "test", Value: float64(123)}).
+					PushGaugeMetric(gomock.Any(), &m.GaugeMetric{Name: "test", Value: float64(123)}).
 					Return(nil)
 			},
 			expected: expected{
@@ -97,7 +97,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 			method: http.MethodPost,
 			mock: func() {
 				service.EXPECT().
-					PushCounterMetric(&m.CounterMetric{Name: "test", Value: int64(123)}).
+					PushCounterMetric(gomock.Any(), &m.CounterMetric{Name: "test", Value: int64(123)}).
 					Return(nil)
 			},
 			expected: expected{
@@ -160,7 +160,7 @@ func TestRouterGetMetric(t *testing.T) {
 			path:   "/value/gauge/test",
 			method: http.MethodGet,
 			mock: func() {
-				service.EXPECT().GetGaugeMetric("test").
+				service.EXPECT().GetGaugeMetric(gomock.Any(), "test").
 					Return(&m.GaugeMetric{Name: "test", Value: float64(1.1)}, nil)
 			},
 			expected: expected{
@@ -174,7 +174,7 @@ func TestRouterGetMetric(t *testing.T) {
 			path:   "/value/counter/test",
 			method: http.MethodGet,
 			mock: func() {
-				service.EXPECT().GetCounterMetric("test").
+				service.EXPECT().GetCounterMetric(gomock.Any(), "test").
 					Return(&m.CounterMetric{Name: "test", Value: int64(1)}, nil)
 			},
 			expected: expected{
@@ -188,7 +188,7 @@ func TestRouterGetMetric(t *testing.T) {
 			path:   "/value/gauge/test",
 			method: http.MethodGet,
 			mock: func() {
-				service.EXPECT().GetGaugeMetric("test").
+				service.EXPECT().GetGaugeMetric(gomock.Any(), "test").
 					Return(nil, errors.New("not existing metric"))
 			},
 			expected: expected{
@@ -202,7 +202,7 @@ func TestRouterGetMetric(t *testing.T) {
 			path:   "/value/counter/test",
 			method: http.MethodGet,
 			mock: func() {
-				service.EXPECT().GetCounterMetric("test").
+				service.EXPECT().GetCounterMetric(gomock.Any(), "test").
 					Return(nil, errors.New("not existing metric"))
 			},
 			expected: expected{
@@ -232,11 +232,11 @@ func TestRouterAllMetricsHTML(t *testing.T) {
 			path:   "",
 			method: http.MethodGet,
 			mock: func() {
-				service.EXPECT().GetAllGaugeMetrics().
+				service.EXPECT().GetAllGaugeMetrics(gomock.Any()).
 					Return([]*m.GaugeMetric{
 						{Name: "test", Value: float64(123)},
 					}, nil)
-				service.EXPECT().GetAllCounterMetrics().
+				service.EXPECT().GetAllCounterMetrics(gomock.Any()).
 					Return([]*m.CounterMetric{
 						{Name: "test", Value: int64(123)},
 					}, nil)
@@ -272,7 +272,7 @@ func TestRouterMetricJSON(t *testing.T) {
 			body:    `{"id": "test", "type": "gauge"}`,
 			headers: headers,
 			mock: func() {
-				service.EXPECT().GetGaugeMetric("test").
+				service.EXPECT().GetGaugeMetric(gomock.Any(), "test").
 					Return(&m.GaugeMetric{Name: "test", Value: float64(1.1)}, nil)
 			},
 			expected: expected{
@@ -288,7 +288,7 @@ func TestRouterMetricJSON(t *testing.T) {
 			body:    `{"id": "test", "type": "counter"}`,
 			headers: headers,
 			mock: func() {
-				service.EXPECT().GetCounterMetric("test").
+				service.EXPECT().GetCounterMetric(gomock.Any(), "test").
 					Return(&m.CounterMetric{Name: "test", Value: int64(1)}, nil)
 			},
 			expected: expected{
@@ -305,7 +305,7 @@ func TestRouterMetricJSON(t *testing.T) {
 			headers: headers,
 			mock: func() {
 				service.EXPECT().
-					PushGaugeMetric(&m.GaugeMetric{Name: "test", Value: float64(123)}).
+					PushGaugeMetric(gomock.Any(), &m.GaugeMetric{Name: "test", Value: float64(123)}).
 					Return(nil)
 			},
 			expected: expected{
@@ -322,13 +322,57 @@ func TestRouterMetricJSON(t *testing.T) {
 			headers: headers,
 			mock: func() {
 				service.EXPECT().
-					PushCounterMetric(&m.CounterMetric{Name: "test", Value: int64(123)}).
+					PushCounterMetric(gomock.Any(), &m.CounterMetric{Name: "test", Value: int64(123)}).
 					Return(nil)
 			},
 			expected: expected{
 				contentType: "application/json",
 				status:      http.StatusOK,
 				body:        `{"id": "test", "type": "counter", "delta": 123}`,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, testIter(ts, tc))
+	}
+}
+
+func TestRouterMetricsJSON(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+
+	service := NewMockmetricsProcessor(mockCtl)
+	r := NewMetricRouter(service)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/json")
+	tests := []test{
+		{
+			name:   "post gauge and counter metrics",
+			path:   "/updates/",
+			method: http.MethodPost,
+			body: `[
+				{"id": "testGauge1", "type": "gauge", "value": 1.0},
+				{"id": "testCounter1", "type": "counter", "delta": 1}
+			]`,
+			headers: headers,
+			mock: func() {
+				service.EXPECT().PushMetrics(
+					gomock.Any(),
+					[]*m.GaugeMetric{
+						{Name: "testGauge1", Value: 1.0},
+					},
+					[]*m.CounterMetric{
+						{Name: "testCounter1", Value: 1},
+					},
+				).Return(nil)
+			},
+			expected: expected{
+				contentType: "",
+				status:      http.StatusOK,
+				body:        "",
 			},
 		},
 	}

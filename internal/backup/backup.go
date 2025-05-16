@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -56,13 +57,13 @@ func (b *MetricsBackup) Restore() (err error) {
 		return
 	}
 	for _, gauge := range m.Gauges {
-		err = b.mgp.PushGaugeMetric(gauge)
+		err = b.mgp.PushGaugeMetric(context.Background(), gauge)
 		if err != nil {
 			return
 		}
 	}
 	for _, counter := range m.Counters {
-		err = b.mgp.PushCounterMetric(counter)
+		err = b.mgp.PushCounterMetric(context.Background(), counter)
 		if err != nil {
 			return
 		}
@@ -85,11 +86,12 @@ func (b *MetricsBackup) Start() {
 }
 
 func (b *MetricsBackup) dumpMetrics() (err error) {
-	gauges, err := b.mgp.GetAllGaugeMetrics()
+	ctx := context.Background()
+	gauges, err := b.mgp.GetAllGaugeMetrics(ctx)
 	if err != nil {
 		return
 	}
-	counters, err := b.mgp.GetAllCounterMetrics()
+	counters, err := b.mgp.GetAllCounterMetrics(ctx)
 	if err != nil {
 		return
 	}

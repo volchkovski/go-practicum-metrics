@@ -1,6 +1,6 @@
 package agent
 
-var runtimeMetrics = []string{
+var runtimeMetricNames = []string{
 	"Alloc",
 	"BuckHashSys",
 	"Frees",

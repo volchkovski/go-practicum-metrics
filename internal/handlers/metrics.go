@@ -1,10 +1,16 @@
 package handlers
 
 import (
+	"context"
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
 type MetricType string
+
+type Metric struct {
+	Name  string
+	Value string
+}
 
 const (
 	GaugeType   = MetricType("gauge")
@@ -12,16 +18,24 @@ const (
 )
 
 type MetricGetter interface {
-	GetGaugeMetric(string) (*m.GaugeMetric, error)
-	GetCounterMetric(string) (*m.CounterMetric, error)
+	GetGaugeMetric(context.Context, string) (*m.GaugeMetric, error)
+	GetCounterMetric(context.Context, string) (*m.CounterMetric, error)
 }
 
 type MetricPusher interface {
-	PushGaugeMetric(*m.GaugeMetric) error
-	PushCounterMetric(*m.CounterMetric) error
+	PushGaugeMetric(context.Context, *m.GaugeMetric) error
+	PushCounterMetric(context.Context, *m.CounterMetric) error
+}
+
+type MetricsPusher interface {
+	PushMetrics(context.Context, []*m.GaugeMetric, []*m.CounterMetric) error
 }
 
 type AllMetricsGetter interface {
-	GetAllGaugeMetrics() ([]*m.GaugeMetric, error)
-	GetAllCounterMetrics() ([]*m.CounterMetric, error)
+	GetAllGaugeMetrics(context.Context) ([]*m.GaugeMetric, error)
+	GetAllCounterMetrics(context.Context) ([]*m.CounterMetric, error)
+}
+
+type DBPinger interface {
+	PingDB(context.Context) error
 }

@@ -1,51 +1,56 @@
 package services
 
 import (
+	"context"
 	"fmt"
 
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
 type MetricService struct {
-	repo MetricsReadWriter
+	strg MetricStorage
 }
 
-func NewMetricService(repo MetricsReadWriter) *MetricService {
-	return &MetricService{repo}
+func (ms *MetricService) Close() error {
+	return ms.strg.Close()
 }
 
-func (ms *MetricService) GetGaugeMetric(nm string) (*m.GaugeMetric, error) {
-	val, err := ms.repo.ReadGauge(nm)
+func NewMetricService(strg MetricStorage) *MetricService {
+	return &MetricService{strg}
+}
+
+func (ms *MetricService) GetGaugeMetric(ctx context.Context, nm string) (*m.GaugeMetric, error) {
+	val, err := ms.strg.ReadGauge(ctx, nm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gauge metric with name %s: %w", nm, err)
 	}
 	return &m.GaugeMetric{Name: nm, Value: val}, nil
 }
 
-func (ms *MetricService) GetCounterMetric(nm string) (*m.CounterMetric, error) {
-	val, err := ms.repo.ReadCounter(nm)
+func (ms *MetricService) GetCounterMetric(ctx context.Context, nm string) (*m.CounterMetric, error) {
+	val, err := ms.strg.ReadCounter(ctx, nm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get counter metric with name %s: %w", nm, err)
 	}
 	return &m.CounterMetric{Name: nm, Value: val}, nil
 }
 
-func (ms *MetricService) PushGaugeMetric(m *m.GaugeMetric) error {
-	if err := ms.repo.WriteGauge(m.Name, m.Value); err != nil {
+func (ms *MetricService) PushGaugeMetric(ctx context.Context, m *m.GaugeMetric) error {
+	if err := ms.strg.WriteGauge(ctx, m.Name, m.Value); err != nil {
 		return fmt.Errorf("failed to push gauge metric with name name %s and value %.2f: %w", m.Name, m.Value, err)
 	}
 	return nil
 }
 
-func (ms *MetricService) PushCounterMetric(m *m.CounterMetric) error {
-	if err := ms.repo.WriteCounter(m.Name, m.Value); err != nil {
+func (ms *MetricService) PushCounterMetric(ctx context.Context, m *m.CounterMetric) error {
+	if err := ms.strg.WriteCounter(ctx, m.Name, m.Value); err != nil {
 		return fmt.Errorf("failed to push counter metric with name name %s and value %d: %w", m.Name, m.Value, err)
 	}
 	return nil
 }
 
-func (ms *MetricService) GetAllGaugeMetrics() ([]*m.GaugeMetric, error) {
-	gauges, err := ms.repo.ReadAllGauges()
+func (ms *MetricService) GetAllGaugeMetrics(ctx context.Context) ([]*m.GaugeMetric, error) {
+	gauges, err := ms.strg.ReadAllGauges(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all gauge metrics: %w", err)
 	}
@@ -56,8 +61,8 @@ func (ms *MetricService) GetAllGaugeMetrics() ([]*m.GaugeMetric, error) {
 	return gaugeMetrics, nil
 }
 
-func (ms *MetricService) GetAllCounterMetrics() ([]*m.CounterMetric, error) {
-	counters, err := ms.repo.ReadAllCounters()
+func (ms *MetricService) GetAllCounterMetrics(ctx context.Context) ([]*m.CounterMetric, error) {
+	counters, err := ms.strg.ReadAllCounters(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all counter metrics: %w", err)
 	}
@@ -66,4 +71,28 @@ func (ms *MetricService) GetAllCounterMetrics() ([]*m.CounterMetric, error) {
 		counterMetrics = append(counterMetrics, &m.CounterMetric{Name: nm, Value: val})
 	}
 	return counterMetrics, nil
+}
+
+func (ms *MetricService) PingDB(ctx context.Context) error {
+	if err := ms.strg.Ping(ctx); err != nil {
+		return fmt.Errorf("DB is not connected: %w", err)
+	}
+	return nil
+}
+
+func (ms *MetricService) PushMetrics(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+	gs := make(map[string]float64)
+	cs := make(map[string]int64)
+
+	for _, gauge := range gauges {
+		gs[gauge.Name] = gauge.Value
+	}
+	for _, counter := range counters {
+		cs[counter.Name] += counter.Value
+	}
+
+	if err := ms.strg.WriteGaugesCounters(ctx, gs, cs); err != nil {
+		return fmt.Errorf("failed to write gauges and counters: %w", err)
+	}
+	return nil
 }
