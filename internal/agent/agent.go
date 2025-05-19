@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
 	"log"
 	"math/rand"
 	"net/http"
@@ -25,6 +26,7 @@ type Agent struct {
 	serverAddr string
 	pollCount  int64
 	client     *resty.Client
+	key        string
 }
 
 func New(cfg *configs.AgentConfig) *Agent {
@@ -35,6 +37,7 @@ func New(cfg *configs.AgentConfig) *Agent {
 		serverAddr: cfg.ServerAddr,
 		pollCount:  0,
 		client:     NewRestyClient(),
+		key:        cfg.Key,
 	}
 }
 
@@ -112,7 +115,13 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 		return err
 	}
 
-	res, err := a.client.R().SetBody(&buff).Post(url)
+	req := a.client.R()
+	if a.key != "" {
+		hshr := hasher.New(a.key)
+		req = req.SetHeader(hasher.HashHeaderKey, hshr.Hash(buff.Bytes()))
+	}
+	req = req.SetBody(&buff)
+	res, err := req.Post(url)
 	if err != nil {
 		return err
 	}
