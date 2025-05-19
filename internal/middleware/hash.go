@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
 	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	"io"
@@ -29,9 +28,11 @@ func WithHash(key string) func(http.Handler) http.Handler {
 		hashFn := func(w http.ResponseWriter, r *http.Request) {
 			reqHash := r.Header.Get(hasher.HashHeaderKey)
 			if reqHash == "" {
-				msg := fmt.Sprintf("Header %s is required", hasher.HashHeaderKey)
-				http.Error(w, msg, http.StatusBadRequest)
+				h.ServeHTTP(w, r)
 				return
+				//msg := fmt.Sprintf("Header %s is required", hasher.HashHeaderKey)
+				//http.Error(w, msg, http.StatusBadRequest)
+				//return
 			}
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
