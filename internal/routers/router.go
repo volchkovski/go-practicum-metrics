@@ -16,9 +16,12 @@ type metricsProcessor interface {
 	handlers.DBPinger
 }
 
-func NewMetricRouter(s metricsProcessor) chi.Router {
+func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
 	r := chi.NewRouter()
 	r.Use(mw.WithLogging)
+	if secretKey != "" {
+		r.Use(mw.WithHash(secretKey))
+	}
 	r.With(mw.WithCompress).Get(`/`, handlers.AllMetricsHandler(s))
 	r.Get(`/ping`, handlers.PingDB(s))
 	r.With(mw.WithCompress).Post(`/updates/`, handlers.CollectMetricsHandlerJSON(s))

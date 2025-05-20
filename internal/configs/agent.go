@@ -11,6 +11,8 @@ type AgentConfig struct {
 	ServerAddr string `env:"ADDRESS"`
 	ReportIntr int    `env:"REPORT_INTERVAL"`
 	PollIntr   int    `env:"POLL_INTERVAL"`
+	Key        string `env:"KEY"`
+	RateLimit  int    `env:"RATE_LIMIT"`
 }
 
 func NewAgentConfig() (*AgentConfig, error) {
@@ -26,5 +28,7 @@ func parseAgentFlags(cfg *AgentConfig) {
 	flag.StringVar(&cfg.ServerAddr, "a", "localhost:8080", "server address and port to push")
 	flag.IntVar(&cfg.ReportIntr, "r", 10, "each time to report metrics")
 	flag.IntVar(&cfg.PollIntr, "p", 2, "each time to poll metrics")
+	flag.StringVar(&cfg.Key, "k", "", "key for making hash")
+	flag.IntVar(&cfg.RateLimit, "l", 1, "number of simultaneous requests")
 	flag.Parse()
 }
