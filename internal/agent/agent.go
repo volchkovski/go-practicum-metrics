@@ -61,29 +61,18 @@ func (a *Agent) Run() {
 	metricsChunks := make(chan []*m.Metrics)
 	defer close(metricsChunks)
 
-	for i := 0; i < a.rateLimit; i++ {
-		go a.postWorker(metricsChunks)
-	}
+	a.startPostWorkers(metricsChunks)
+	a.startMetricCollection(ctx)
 
-	go func(ctx context.Context) {
-		pollTicker := time.NewTicker(a.pollIntr)
-		defer pollTicker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-pollTicker.C:
-				a.collectAllMetrics()
-			}
-		}
-	}(ctx)
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	interrupt := a.setupSignalHandler()
 
 	repTicker := time.NewTicker(a.repIntr)
 	defer repTicker.Stop()
 
+	a.runReportingLoop(metricsChunks, interrupt, repTicker)
+}
+
+func (a *Agent) runReportingLoop(metricsChunks chan<- []*m.Metrics, interrupt <-chan os.Signal, repTicker *time.Ticker) {
 	for {
 		select {
 		case s := <-interrupt:
@@ -95,7 +84,32 @@ func (a *Agent) Run() {
 	}
 }
 
-func (a *Agent) postWorker(metricsChunks chan []*m.Metrics) {
+func (a *Agent) setupSignalHandler() chan os.Signal {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	return interrupt
+}
+
+func (a *Agent) startMetricCollection(ctx context.Context) {
+	pollTicker := time.NewTicker(a.pollIntr)
+	defer pollTicker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-pollTicker.C:
+			a.collectAllMetrics()
+		}
+	}
+}
+
+func (a *Agent) startPostWorkers(metricsChunks <-chan []*m.Metrics) {
+	for i := 0; i < a.rateLimit; i++ {
+		go a.postWorker(metricsChunks)
+	}
+}
+
+func (a *Agent) postWorker(metricsChunks <-chan []*m.Metrics) {
 	for metricsChunk := range metricsChunks {
 		if err := a.postMetrics(metricsChunk); err != nil {
 			logger.Log.Errorf("Failed to post metrics: %v", err)

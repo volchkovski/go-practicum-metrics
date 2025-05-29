@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 )
 
 const HashHeaderKey = "HashSHA256"
@@ -25,14 +24,6 @@ func (hs *Hasher) Hash(data []byte) string {
 }
 
 func (hs *Hasher) Validate(data []byte, hash string) (bool, error) {
-	actual, err := hex.DecodeString(hash)
-	if err != nil {
-		return false, fmt.Errorf("incorrect hash format: %w", err)
-	}
 	expectedHash := hs.Hash(data)
-	expected, err := hex.DecodeString(expectedHash)
-	if err != nil {
-		return false, fmt.Errorf("failed to generate hash: %w", err)
-	}
-	return hmac.Equal(actual, expected), nil
+	return hmac.Equal([]byte(hash), []byte(expectedHash)), nil
 }
