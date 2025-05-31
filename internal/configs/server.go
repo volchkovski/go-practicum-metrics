@@ -15,6 +15,7 @@ type ServerConfig struct {
 	LogLevel        string `env:"LOG_LEVEL"`
 	Env             string `env:"ENVIRONMENT"`
 	DSN             string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 }
 
 func NewServerConfig() (*ServerConfig, error) {
@@ -34,5 +35,6 @@ func parseServerFlags(cfg *ServerConfig) {
 	flag.StringVar(&cfg.LogLevel, "l", "info", "level of logging")
 	flag.StringVar(&cfg.Env, "e", "local", "environment: prod, local")
 	flag.StringVar(&cfg.DSN, "d", "", "postgres data source name")
+	flag.StringVar(&cfg.Key, "k", "", "key for making hash")
 	flag.Parse()
 }

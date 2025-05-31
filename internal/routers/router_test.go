@@ -1,7 +1,9 @@
 package routers
 
 import (
+	"bytes"
 	"errors"
+	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,13 +31,28 @@ type test struct {
 	expected expected
 }
 
+const secretKey = "test"
+
+func headersWithHash(h http.Header, b []byte) http.Header {
+	if h == nil {
+		h = make(http.Header)
+	}
+	hshr := hasher.New(secretKey)
+	hash := hshr.Hash(b)
+	h.Set(hasher.HashHeaderKey, hash)
+	return h
+}
+
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader, headers http.Header) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, body)
 	require.NoError(t, err)
 
-	if headers != nil {
-		req.Header = headers
-	}
+	b, err := io.ReadAll(body)
+	require.NoError(t, err)
+	req.Body = io.NopCloser(bytes.NewBuffer(b))
+
+	headers = headersWithHash(headers, b)
+	req.Header = headers
 
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
@@ -52,7 +69,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 func testIter(ts *httptest.Server, tc test) func(*testing.T) {
 	return func(t *testing.T) {
 		tc.mock()
-		resp, body := testRequest(t, ts, tc.method, tc.path, strings.NewReader(tc.body), nil)
+		resp, body := testRequest(t, ts, tc.method, tc.path, strings.NewReader(tc.body), tc.headers)
 		defer func() {
 			require.NoError(t, resp.Body.Close())
 		}()
@@ -71,7 +88,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(service)
+	r := NewMetricRouter(secretKey, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -150,7 +167,7 @@ func TestRouterGetMetric(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(service)
+	r := NewMetricRouter(secretKey, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -222,7 +239,7 @@ func TestRouterAllMetricsHTML(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(service)
+	r := NewMetricRouter(secretKey, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -258,7 +275,7 @@ func TestRouterMetricJSON(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(service)
+	r := NewMetricRouter(secretKey, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -342,7 +359,7 @@ func TestRouterMetricsJSON(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(service)
+	r := NewMetricRouter(secretKey, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

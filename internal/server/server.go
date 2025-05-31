@@ -55,7 +55,7 @@ func Run(cfg *configs.ServerConfig) (err error) {
 		}
 	}
 
-	router := routers.NewMetricRouter(service)
+	router := routers.NewMetricRouter(cfg.Key, service)
 	httpserver := httpserver.New(router, cfg.Addr)
 
 	httpserver.Start()
