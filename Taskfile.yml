@@ -6,4 +6,4 @@ tasks:
       - go run ./cmd/server/main.go -l debug -k "test" -d "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
   runagent:
     cmds:
-      - go run ./cmd/agent/main.go -k "testt"
+      - go run ./cmd/agent/main.go -k "test"

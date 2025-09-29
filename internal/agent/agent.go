@@ -61,7 +61,10 @@ func (a *Agent) Run() {
 	metricsChunks := make(chan []*m.Metrics)
 	defer close(metricsChunks)
 
+	logger.Log.Infoln("Starting workers")
 	a.startPostWorkers(metricsChunks)
+
+	logger.Log.Infoln("Starting metric collection")
 	a.startMetricCollection(ctx)
 
 	interrupt := a.setupSignalHandler()
@@ -69,6 +72,7 @@ func (a *Agent) Run() {
 	repTicker := time.NewTicker(a.repIntr)
 	defer repTicker.Stop()
 
+	logger.Log.Infoln("Starting reporting loop")
 	a.runReportingLoop(metricsChunks, interrupt, repTicker)
 }
 
@@ -91,19 +95,22 @@ func (a *Agent) setupSignalHandler() chan os.Signal {
 }
 
 func (a *Agent) startMetricCollection(ctx context.Context) {
-	pollTicker := time.NewTicker(a.pollIntr)
-	defer pollTicker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-pollTicker.C:
-			a.collectAllMetrics()
+	go func() {
+		pollTicker := time.NewTicker(a.pollIntr)
+		defer pollTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-pollTicker.C:
+				a.collectAllMetrics()
+			}
 		}
-	}
+	}()
 }
 
 func (a *Agent) startPostWorkers(metricsChunks <-chan []*m.Metrics) {
+	logger.Log.Debugf("Workers number: %d", a.rateLimit)
 	for i := 0; i < a.rateLimit; i++ {
 		go a.postWorker(metricsChunks)
 	}
@@ -202,7 +209,7 @@ func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
 }
 
 func (a *Agent) postMetrics(metrics []*m.Metrics) error {
-	logger.Log.Infoln("im happening")
+	logger.Log.Infoln("Posting metrics")
 	if len(metrics) == 0 {
 		logger.Log.Warn("empty metrics slice")
 		return nil

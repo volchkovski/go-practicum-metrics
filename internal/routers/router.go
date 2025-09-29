@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -36,5 +37,7 @@ func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
 		r.With(mw.WithCompress).Post(`/`, handlers.MetricHandlerJSON(s))
 		r.Get(`/{tp}/{nm}`, handlers.MetricHandler(s))
 	})
+
+	r.Mount("/debug", middleware.Profiler())
 	return r
 }

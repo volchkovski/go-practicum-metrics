@@ -5,6 +5,7 @@ import (
 
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
 	"github.com/volchkovski/go-practicum-metrics/internal/server"
+	_ "net/http/pprof"
 )
 
 func main() {
