@@ -320,7 +320,7 @@ func TestMemStorage_ConcurrentAccess(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Read
-				_, err = storage.ReadGauge(ctx, key)
+				_, _ = storage.ReadGauge(ctx, key)
 				// May or may not exist due to concurrency, so don't assert error
 			}
 		}(i)
@@ -339,7 +339,7 @@ func TestMemStorage_ConcurrentAccess(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Read
-				_, err = storage.ReadCounter(ctx, key)
+				_, _ = storage.ReadCounter(ctx, key)
 				// May or may not exist due to concurrency, so don't assert error
 			}
 		}(i)

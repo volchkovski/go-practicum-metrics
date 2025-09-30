@@ -211,7 +211,7 @@ func ExampleNewMetricRouter() {
 	defer server.Close()
 
 	// Example 1: Store a gauge metric
-	gaugeReq := fmt.Sprintf(`{"id":"temperature","type":"gauge","value":23.5}`)
+	gaugeReq := `{"id":"temperature","type":"gauge","value":23.5}`
 	resp, err := http.Post(server.URL+"/update/", "application/json", strings.NewReader(gaugeReq))
 	if err != nil {
 		log.Fatal(err)
@@ -220,7 +220,7 @@ func ExampleNewMetricRouter() {
 	fmt.Printf("Store gauge - Status: %d\n", resp.StatusCode)
 
 	// Example 2: Store a counter metric
-	counterReq := fmt.Sprintf(`{"id":"requests","type":"counter","delta":10}`)
+	counterReq := `{"id":"requests","type":"counter","delta":10}`
 	resp, err = http.Post(server.URL+"/update/", "application/json", strings.NewReader(counterReq))
 	if err != nil {
 		log.Fatal(err)
@@ -229,7 +229,7 @@ func ExampleNewMetricRouter() {
 	fmt.Printf("Store counter - Status: %d\n", resp.StatusCode)
 
 	// Example 3: Retrieve a metric
-	valueReq := fmt.Sprintf(`{"id":"temperature","type":"gauge"}`)
+	valueReq := `{"id":"temperature","type":"gauge"}`
 	resp, err = http.Post(server.URL+"/value/", "application/json", strings.NewReader(valueReq))
 	if err != nil {
 		log.Fatal(err)
