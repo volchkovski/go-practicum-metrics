@@ -16,15 +16,22 @@ import (
 )
 
 var (
-	ErrInvalidType    = fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
+	// ErrInvalidType is returned when an unsupported metric type is used.
+	ErrInvalidType = fmt.Errorf("allowed metric types: %s, %s", GaugeType, CounterType)
+	// ErrMetricNotFound is returned when a requested metric is not found in storage.
 	ErrMetricNotFound = errors.New("metric is not found")
 )
 
 var (
+	// AllowedMetricTypesMsg is the error message for invalid metric types.
 	AllowedMetricTypesMsg = fmt.Sprintf("Allowed metric types: %s, %s", GaugeType, CounterType)
-	CanceledReqMsg        = "Request is canceled"
+	// CanceledReqMsg is the error message for canceled requests.
+	CanceledReqMsg = "Request is canceled"
 )
 
+// CollectMetricHandler creates an HTTP handler for collecting individual metrics via URL path.
+// It expects URL parameters: tp (metric type), nm (name), val (value).
+// The handler supports both gauge and counter metric types.
 func CollectMetricHandler(s MetricPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -81,6 +88,9 @@ func collectMetric(ctx context.Context, s MetricPusher, tp, nm, val string) erro
 	return nil
 }
 
+// MetricHandler creates an HTTP handler for retrieving individual metric values.
+// It expects URL parameters: tp (metric type), nm (metric name).
+// Returns the metric value as plain text or 404 if not found.
 func MetricHandler(s MetricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tp := chi.URLParam(r, "tp")
@@ -142,6 +152,8 @@ func metricValue(ctx context.Context, s MetricGetter, tp, nm string) (string, er
 	}
 }
 
+// AllMetricsHandler creates an HTTP handler for retrieving all stored metrics.
+// It returns an HTML page displaying all gauge and counter metrics.
 func AllMetricsHandler(s AllMetricsGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type result struct {
@@ -208,6 +220,8 @@ func allMetrics(ctx context.Context, s AllMetricsGetter) ([]Metric, error) {
 	return metrics, nil
 }
 
+// CollectMetricHandlerJSON creates an HTTP handler for collecting individual metrics via JSON.
+// It accepts a JSON payload with metric data and stores it in the system.
 func CollectMetricHandlerJSON(s MetricPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric m.Metrics
@@ -264,6 +278,8 @@ func collectMetricJSON(ctx context.Context, s MetricPusher, metric m.Metrics) er
 	return nil
 }
 
+// MetricHandlerJSON creates an HTTP handler for retrieving metrics via JSON.
+// It accepts a JSON request with metric ID and type, returns the metric data.
 func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric := new(m.Metrics)
@@ -334,6 +350,8 @@ func metricJSON(ctx context.Context, s MetricGetter, metric *m.Metrics) (*m.Metr
 	return metric, nil
 }
 
+// PingDB creates an HTTP handler for checking database connectivity.
+// Returns 200 OK if database is reachable, 500 Internal Server Error otherwise.
 func PingDB(s DBPinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -359,6 +377,8 @@ func PingDB(s DBPinger) http.HandlerFunc {
 	}
 }
 
+// CollectMetricsHandlerJSON creates an HTTP handler for batch collection of metrics via JSON.
+// It accepts an array of metric objects and stores them efficiently in a single operation.
 func CollectMetricsHandlerJSON(s MetricsPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []m.Metrics

@@ -7,18 +7,23 @@ import (
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
+// MetricService provides business logic for metric operations.
+// It acts as a layer between HTTP handlers and the storage backend.
 type MetricService struct {
 	strg MetricStorage
 }
 
+// Close releases any resources held by the underlying storage.
 func (ms *MetricService) Close() error {
 	return ms.strg.Close()
 }
 
+// NewMetricService creates a new metric service with the provided storage backend.
 func NewMetricService(strg MetricStorage) *MetricService {
 	return &MetricService{strg}
 }
 
+// GetGaugeMetric retrieves a gauge metric by name from the storage.
 func (ms *MetricService) GetGaugeMetric(ctx context.Context, nm string) (*m.GaugeMetric, error) {
 	val, err := ms.strg.ReadGauge(ctx, nm)
 	if err != nil {
@@ -27,6 +32,7 @@ func (ms *MetricService) GetGaugeMetric(ctx context.Context, nm string) (*m.Gaug
 	return &m.GaugeMetric{Name: nm, Value: val}, nil
 }
 
+// GetCounterMetric retrieves a counter metric by name from the storage.
 func (ms *MetricService) GetCounterMetric(ctx context.Context, nm string) (*m.CounterMetric, error) {
 	val, err := ms.strg.ReadCounter(ctx, nm)
 	if err != nil {
@@ -35,6 +41,7 @@ func (ms *MetricService) GetCounterMetric(ctx context.Context, nm string) (*m.Co
 	return &m.CounterMetric{Name: nm, Value: val}, nil
 }
 
+// PushGaugeMetric stores a gauge metric in the storage.
 func (ms *MetricService) PushGaugeMetric(ctx context.Context, m *m.GaugeMetric) error {
 	if err := ms.strg.WriteGauge(ctx, m.Name, m.Value); err != nil {
 		return fmt.Errorf("failed to push gauge metric with name name %s and value %.2f: %w", m.Name, m.Value, err)
@@ -42,6 +49,7 @@ func (ms *MetricService) PushGaugeMetric(ctx context.Context, m *m.GaugeMetric) 
 	return nil
 }
 
+// PushCounterMetric stores a counter metric in the storage.
 func (ms *MetricService) PushCounterMetric(ctx context.Context, m *m.CounterMetric) error {
 	if err := ms.strg.WriteCounter(ctx, m.Name, m.Value); err != nil {
 		return fmt.Errorf("failed to push counter metric with name name %s and value %d: %w", m.Name, m.Value, err)
@@ -49,6 +57,7 @@ func (ms *MetricService) PushCounterMetric(ctx context.Context, m *m.CounterMetr
 	return nil
 }
 
+// GetAllGaugeMetrics retrieves all gauge metrics from the storage.
 func (ms *MetricService) GetAllGaugeMetrics(ctx context.Context) ([]*m.GaugeMetric, error) {
 	gauges, err := ms.strg.ReadAllGauges(ctx)
 	if err != nil {
@@ -61,6 +70,7 @@ func (ms *MetricService) GetAllGaugeMetrics(ctx context.Context) ([]*m.GaugeMetr
 	return gaugeMetrics, nil
 }
 
+// GetAllCounterMetrics retrieves all counter metrics from the storage.
 func (ms *MetricService) GetAllCounterMetrics(ctx context.Context) ([]*m.CounterMetric, error) {
 	counters, err := ms.strg.ReadAllCounters(ctx)
 	if err != nil {
@@ -73,6 +83,7 @@ func (ms *MetricService) GetAllCounterMetrics(ctx context.Context) ([]*m.Counter
 	return counterMetrics, nil
 }
 
+// PingDB checks the health of the underlying storage connection.
 func (ms *MetricService) PingDB(ctx context.Context) error {
 	if err := ms.strg.Ping(ctx); err != nil {
 		return fmt.Errorf("DB is not connected: %w", err)
@@ -80,6 +91,7 @@ func (ms *MetricService) PingDB(ctx context.Context) error {
 	return nil
 }
 
+// PushMetrics efficiently stores multiple gauge and counter metrics in a single operation.
 func (ms *MetricService) PushMetrics(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
 	gs := make(map[string]float64)
 	cs := make(map[string]int64)

@@ -1,8 +1,9 @@
 package routers
 
 import (
-	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
+
+	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/volchkovski/go-practicum-metrics/internal/handlers"
@@ -17,6 +18,9 @@ type metricsProcessor interface {
 	handlers.DBPinger
 }
 
+// NewMetricRouter creates a new HTTP router with metric endpoints.
+// It configures routes for collecting and retrieving metrics with optional security middleware.
+// The secretKey parameter enables hash-based authentication if provided.
 func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
 	r := chi.NewRouter()
 	r.Use(mw.WithLogging)
