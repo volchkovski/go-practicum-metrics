@@ -29,9 +29,15 @@ var (
 	CanceledReqMsg = "Request is canceled"
 )
 
-// CollectMetricHandler creates an HTTP handler for collecting individual metrics via URL path.
-// It expects URL parameters: tp (metric type), nm (name), val (value).
-// The handler supports both gauge and counter metric types.
+// CollectMetricHandler creates an HTTP handler for collecting individual metrics via URL path parameters.
+// It expects URL parameters: tp (metric type: "gauge" or "counter"), nm (metric name), val (metric value).
+//
+// Supported metric types:
+//   - gauge: floating-point values that can increase or decrease
+//   - counter: integer values that can only increase
+//
+// The handler processes requests asynchronously and can be canceled via request context.
+// Returns HTTP 400 for invalid parameters, HTTP 500 for storage errors.
 func CollectMetricHandler(s MetricPusher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 

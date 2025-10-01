@@ -7,23 +7,32 @@ import (
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
-// MetricService provides business logic for metric operations.
-// It acts as a layer between HTTP handlers and the storage backend.
+// MetricService provides business logic for metric operations and validation.
+// It acts as a layer between HTTP handlers and the storage backend, implementing
+// proper error handling, context management, and business rules for metrics.
+//
+// The service supports two types of metrics:
+//   - Gauge metrics: floating-point values that represent current state
+//   - Counter metrics: integer values that can only increase
 type MetricService struct {
 	strg MetricStorage
 }
 
-// Close releases any resources held by the underlying storage.
-func (ms *MetricService) Close() error {
-	return ms.strg.Close()
-}
-
 // NewMetricService creates a new metric service with the provided storage backend.
+// The storage parameter must implement MetricStorage interface for persistence operations.
 func NewMetricService(strg MetricStorage) *MetricService {
 	return &MetricService{strg}
 }
 
+// Close releases any resources held by the underlying storage.
+// This method should be called when the service is no longer needed to prevent resource leaks.
+func (ms *MetricService) Close() error {
+	return ms.strg.Close()
+}
+
 // GetGaugeMetric retrieves a gauge metric by name from the storage.
+// Returns an error if the metric is not found or if there's a storage issue.
+// The context can be used to cancel the operation if it takes too long.
 func (ms *MetricService) GetGaugeMetric(ctx context.Context, nm string) (*m.GaugeMetric, error) {
 	val, err := ms.strg.ReadGauge(ctx, nm)
 	if err != nil {
@@ -33,6 +42,8 @@ func (ms *MetricService) GetGaugeMetric(ctx context.Context, nm string) (*m.Gaug
 }
 
 // GetCounterMetric retrieves a counter metric by name from the storage.
+// Returns an error if the metric is not found or if there's a storage issue.
+// The context can be used to cancel the operation if it takes too long.
 func (ms *MetricService) GetCounterMetric(ctx context.Context, nm string) (*m.CounterMetric, error) {
 	val, err := ms.strg.ReadCounter(ctx, nm)
 	if err != nil {
@@ -41,7 +52,9 @@ func (ms *MetricService) GetCounterMetric(ctx context.Context, nm string) (*m.Co
 	return &m.CounterMetric{Name: nm, Value: val}, nil
 }
 
-// PushGaugeMetric stores a gauge metric in the storage.
+// PushGaugeMetric stores or updates a gauge metric in the storage.
+// Gauge metrics can have their values completely replaced with new values.
+// Returns an error if the storage operation fails.
 func (ms *MetricService) PushGaugeMetric(ctx context.Context, m *m.GaugeMetric) error {
 	if err := ms.strg.WriteGauge(ctx, m.Name, m.Value); err != nil {
 		return fmt.Errorf("failed to push gauge metric with name name %s and value %.2f: %w", m.Name, m.Value, err)
@@ -49,7 +62,9 @@ func (ms *MetricService) PushGaugeMetric(ctx context.Context, m *m.GaugeMetric) 
 	return nil
 }
 
-// PushCounterMetric stores a counter metric in the storage.
+// PushCounterMetric stores or updates a counter metric in the storage.
+// Counter metrics are additive - the new value is added to the existing value.
+// Returns an error if the storage operation fails.
 func (ms *MetricService) PushCounterMetric(ctx context.Context, m *m.CounterMetric) error {
 	if err := ms.strg.WriteCounter(ctx, m.Name, m.Value); err != nil {
 		return fmt.Errorf("failed to push counter metric with name name %s and value %d: %w", m.Name, m.Value, err)
