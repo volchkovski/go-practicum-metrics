@@ -56,7 +56,8 @@ func TestInitialize_InvalidLogLevel(t *testing.T) {
 
 	t.Run("empty_level", func(t *testing.T) {
 		err := Initialize("", ProductionEnv)
-		_ = err
+		// Empty level is actually valid - it defaults to info level in zap
+		assert.NoError(t, err)
 	})
 }
 
