@@ -1,7 +1,9 @@
+// Package migrator provides database migration functionality for PostgreSQL.
 package migrator
 
 import (
 	"errors"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"

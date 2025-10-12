@@ -1,3 +1,5 @@
+// Package backup provides functionality for persisting metrics data to files
+// and restoring it on startup. It supports JSON-based backup and restore operations.
 package backup
 
 import (
@@ -67,8 +69,8 @@ func IsFileExists(filePath string) bool {
 }
 
 func (b *MetricsBackup) Restore() (err error) {
-	if err := ValidateFilePath(b.fp); err != nil {
-		return err
+	if validationErr := ValidateFilePath(b.fp); validationErr != nil {
+		return validationErr
 	}
 
 	if !IsFileExists(b.fp) {
@@ -144,8 +146,8 @@ func (b *MetricsBackup) dumpMetrics() (err error) {
 
 // writeMetricsToFile записывает метрики в файл
 func (b *MetricsBackup) writeMetricsToFile(gauges []*models.GaugeMetric, counters []*models.CounterMetric) (err error) {
-	if err := ValidateFilePath(b.fp); err != nil {
-		return err
+	if validationErr := ValidateFilePath(b.fp); validationErr != nil {
+		return validationErr
 	}
 
 	file, err := os.Create(b.fp)

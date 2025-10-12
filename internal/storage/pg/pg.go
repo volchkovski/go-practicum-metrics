@@ -1,3 +1,4 @@
+// Package pg provides PostgreSQL storage implementation for metrics data.
 package pg
 
 import (
@@ -5,8 +6,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/volchkovski/go-practicum-metrics/internal/storage/pg/migrator"
 	"time"
+
+	"github.com/volchkovski/go-practicum-metrics/internal/storage/pg/migrator"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )

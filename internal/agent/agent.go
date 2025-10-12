@@ -1,3 +1,5 @@
+// Package agent provides the metrics collection agent that gathers
+// system metrics and sends them to a metrics server via HTTP.
 package agent
 
 import (
@@ -6,11 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
-	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	"log"
 	"math/rand"
 	"net/http"
@@ -22,6 +19,12 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
+	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"

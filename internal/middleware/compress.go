@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware for compression, logging, and security.
 package middleware
 
 import (

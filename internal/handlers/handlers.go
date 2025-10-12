@@ -1,3 +1,5 @@
+// Package handlers provides HTTP handlers for the metrics server.
+// It includes handlers for collecting, retrieving, and managing metrics data.
 package handlers
 
 import (
@@ -304,8 +306,8 @@ func MetricHandlerJSON(s MetricGetter) http.HandlerFunc {
 		resultChan := make(chan result, 1)
 
 		go func() {
-			metric, err := metricJSON(ctx, s, metric)
-			resultChan <- result{metric: metric, err: err}
+			resultMetric, err := metricJSON(ctx, s, metric)
+			resultChan <- result{metric: resultMetric, err: err}
 			close(resultChan)
 		}()
 

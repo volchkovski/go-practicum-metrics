@@ -151,7 +151,7 @@ func TestWithHash(t *testing.T) {
 			w.Write([]byte("created: " + string(body)))
 		})
 
-		hashHandler := WithHash(key)(customHandler)
+		customHashHandler := WithHash(key)(customHandler)
 
 		requestBody := "test body"
 		hash := hshr.Hash([]byte(requestBody))
@@ -160,7 +160,7 @@ func TestWithHash(t *testing.T) {
 		req.Header.Set(hasher.HashHeaderKey, hash)
 		rec := httptest.NewRecorder()
 
-		hashHandler.ServeHTTP(rec, req)
+		customHashHandler.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusCreated, rec.Code)
 		assert.Equal(t, "created: "+requestBody, rec.Body.String())

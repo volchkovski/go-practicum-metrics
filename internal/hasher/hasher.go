@@ -1,3 +1,5 @@
+// Package hasher provides HMAC-SHA256 hashing functionality
+// for securing HTTP communications between agent and server.
 package hasher
 
 import (

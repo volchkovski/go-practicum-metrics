@@ -1,3 +1,4 @@
+// Package mem provides in-memory storage implementation for metrics data.
 package mem
 
 import (

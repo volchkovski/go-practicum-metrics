@@ -1,3 +1,4 @@
+// Package httpserver provides HTTP server functionality with graceful shutdown support.
 package httpserver
 
 import (
