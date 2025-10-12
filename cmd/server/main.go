@@ -16,6 +16,7 @@ var (
 )
 
 func main() {
+	showBuildInfo()
 	cfg, err := configs.NewServerConfig()
 	if err != nil {
 		log.Fatal(err)

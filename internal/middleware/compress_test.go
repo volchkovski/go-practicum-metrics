@@ -120,7 +120,11 @@ func TestWithCompress(t *testing.T) {
 			http.Error(w, "error reading body", http.StatusInternalServerError)
 			return
 		}
-		w.Write([]byte("response: " + string(body)))
+		_, err = w.Write([]byte("response: " + string(body)))
+		if err != nil {
+			http.Error(w, "error writing response", http.StatusInternalServerError)
+			return
+		}
 	})
 
 	compressedHandler := WithCompress(handler)

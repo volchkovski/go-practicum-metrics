@@ -50,7 +50,8 @@ func TestLoggingResponseWriter(t *testing.T) {
 
 		// Write without calling WriteHeader should default to 200
 		data := []byte("test")
-		lrw.Write(data)
+		_, err := lrw.Write(data)
+		assert.NoError(t, err)
 
 		// Status should remain 0 until WriteHeader is called
 		assert.Equal(t, 0, lrw.status)
@@ -61,7 +62,11 @@ func TestLoggingResponseWriter(t *testing.T) {
 func TestWithLogging(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("test response"))
+		_, err := w.Write([]byte("test response"))
+		if err != nil {
+			http.Error(w, "error writing response", http.StatusInternalServerError)
+			return
+		}
 	})
 
 	loggingHandler := WithLogging(handler)

@@ -34,7 +34,10 @@ func ExampleCollectMetricHandler() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Printf("Status: %d\n", resp.StatusCode)
 	// Output: Status: 200
@@ -59,7 +62,12 @@ func ExampleMetricHandler() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -216,7 +224,10 @@ func ExampleNewMetricRouter() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("Store gauge - Status: %d\n", resp.StatusCode)
 
 	// Example 2: Store a counter metric
@@ -225,7 +236,10 @@ func ExampleNewMetricRouter() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("Store counter - Status: %d\n", resp.StatusCode)
 
 	// Example 3: Retrieve a metric
@@ -234,7 +248,10 @@ func ExampleNewMetricRouter() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("Get metric - Status: %d\n", resp.StatusCode)
 
 	// Example 4: Check database connection
@@ -242,7 +259,10 @@ func ExampleNewMetricRouter() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("Ping DB - Status: %d\n", resp.StatusCode)
 
 	// Output:

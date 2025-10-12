@@ -59,7 +59,11 @@ func TestWithHash(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("response: " + string(body)))
+		_, err = w.Write([]byte("response: " + string(body)))
+		if err != nil {
+			http.Error(w, "error writing response", http.StatusInternalServerError)
+			return
+		}
 	})
 
 	hashHandler := WithHash(key)(handler)
@@ -148,7 +152,11 @@ func TestWithHash(t *testing.T) {
 		customHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			body, _ := io.ReadAll(r.Body)
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("created: " + string(body)))
+			_, err := w.Write([]byte("created: " + string(body)))
+			if err != nil {
+				http.Error(w, "error writing response", http.StatusInternalServerError)
+				return
+			}
 		})
 
 		customHashHandler := WithHash(key)(customHandler)

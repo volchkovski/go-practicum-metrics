@@ -59,18 +59,29 @@ func TestNewAgentConfig(t *testing.T) {
 		os.Args = []string{"test"}
 
 		// Set environment variables
-		os.Setenv("ADDRESS", "env.example.com:8080")
-		os.Setenv("REPORT_INTERVAL", "15")
-		os.Setenv("POLL_INTERVAL", "3")
-		os.Setenv("KEY", "env-key")
-		os.Setenv("RATE_LIMIT", "5")
+		var err error
+		err = os.Setenv("ADDRESS", "env.example.com:8080")
+		require.NoError(t, err)
+		err = os.Setenv("REPORT_INTERVAL", "15")
+		require.NoError(t, err)
+		err = os.Setenv("POLL_INTERVAL", "3")
+		require.NoError(t, err)
+		err = os.Setenv("KEY", "env-key")
+		require.NoError(t, err)
+		err = os.Setenv("RATE_LIMIT", "5")
+		require.NoError(t, err)
 
 		defer func() {
-			os.Unsetenv("ADDRESS")
-			os.Unsetenv("REPORT_INTERVAL")
-			os.Unsetenv("POLL_INTERVAL")
-			os.Unsetenv("KEY")
-			os.Unsetenv("RATE_LIMIT")
+			err := os.Unsetenv("ADDRESS")
+			require.NoError(t, err)
+			err = os.Unsetenv("REPORT_INTERVAL")
+			require.NoError(t, err)
+			err = os.Unsetenv("POLL_INTERVAL")
+			require.NoError(t, err)
+			err = os.Unsetenv("KEY")
+			require.NoError(t, err)
+			err = os.Unsetenv("RATE_LIMIT")
+			require.NoError(t, err)
 		}()
 
 		config, err := NewAgentConfig()

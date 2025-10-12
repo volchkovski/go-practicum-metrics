@@ -46,8 +46,8 @@ func TestCounterMetric(t *testing.T) {
 
 func TestMetrics(t *testing.T) {
 	t.Run("create metrics struct", func(t *testing.T) {
-		gauge := &GaugeMetric{Name: "gauge1", Value: 1.5}
-		counter := &CounterMetric{Name: "counter1", Value: 10}
+		gauge := &GaugeMetric{Value: 1.5}
+		counter := &CounterMetric{Value: 10}
 
 		metrics := Metrics{
 			ID:    "metric_id",
@@ -70,6 +70,8 @@ func TestMetrics(t *testing.T) {
 			MType: "counter",
 		}
 
+		assert.Equal(t, "test", metrics.ID)
+		assert.Equal(t, "counter", metrics.MType)
 		assert.Nil(t, metrics.Delta)
 		assert.Nil(t, metrics.Value)
 	})

@@ -79,7 +79,8 @@ func TestIsFileExists(t *testing.T) {
 		// Создаем файл
 		file, err := os.Create(tmpFile)
 		require.NoError(t, err)
-		file.Close()
+		err = file.Close()
+		require.NoError(t, err)
 
 		exists := IsFileExists(tmpFile)
 		assert.True(t, exists)
@@ -216,7 +217,10 @@ func TestMetricsBackup_WriteMetricsToFile(t *testing.T) {
 
 		file, err := os.Open(testFile)
 		require.NoError(t, err)
-		defer file.Close()
+		defer func() {
+			err := file.Close()
+			require.NoError(t, err)
+		}()
 
 		var loadedMetrics metrics
 		err = json.NewDecoder(file).Decode(&loadedMetrics)
@@ -279,7 +283,8 @@ func TestMetricsBackup_Restore(t *testing.T) {
 
 		err = json.NewEncoder(file).Encode(testData)
 		require.NoError(t, err)
-		file.Close()
+		err = file.Close()
+		require.NoError(t, err)
 
 		mgp := &mockMetricsGetPusher{}
 		backup := NewMetricsBackup(mgp, testFile, 0)

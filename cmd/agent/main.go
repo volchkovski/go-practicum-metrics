@@ -15,6 +15,7 @@ var (
 )
 
 func main() {
+	showBuildInfo()
 	cfg, err := configs.NewAgentConfig()
 	if err != nil {
 		log.Fatal(err)

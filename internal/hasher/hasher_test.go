@@ -186,6 +186,9 @@ func BenchmarkHasher_Validate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		hasher.Validate(data, hash)
+		_, err := hasher.Validate(data, hash)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
