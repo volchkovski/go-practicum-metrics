@@ -16,6 +16,7 @@ type ServerConfig struct {
 	Env             string `env:"ENVIRONMENT"`
 	DSN             string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 }
 
 func NewServerConfig() (*ServerConfig, error) {
@@ -36,5 +37,6 @@ func parseServerFlags(cfg *ServerConfig) {
 	flag.StringVar(&cfg.Env, "e", "local", "environment: prod, local")
 	flag.StringVar(&cfg.DSN, "d", "", "postgres data source name")
 	flag.StringVar(&cfg.Key, "k", "", "key for making hash")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "./private.pem", "path to rsa private key")
 	flag.Parse()
 }

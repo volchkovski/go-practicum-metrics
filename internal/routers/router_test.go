@@ -88,7 +88,7 @@ func TestRouterUpdateMetric(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(secretKey, service)
+	r := NewMetricRouter(secretKey, nil, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -167,7 +167,7 @@ func TestRouterGetMetric(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(secretKey, service)
+	r := NewMetricRouter(secretKey, nil, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -239,7 +239,7 @@ func TestRouterAllMetricsHTML(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(secretKey, service)
+	r := NewMetricRouter(secretKey, nil, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -275,7 +275,7 @@ func TestRouterMetricJSON(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(secretKey, service)
+	r := NewMetricRouter(secretKey, nil, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -359,7 +359,7 @@ func TestRouterMetricsJSON(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 
 	service := NewMockmetricsProcessor(mockCtl)
-	r := NewMetricRouter(secretKey, service)
+	r := NewMetricRouter(secretKey, nil, service)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

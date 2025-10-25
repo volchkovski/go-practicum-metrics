@@ -16,6 +16,7 @@ type AgentConfig struct {
 	PollIntr   int    `env:"POLL_INTERVAL"`
 	Key        string `env:"KEY"`
 	RateLimit  int    `env:"RATE_LIMIT"`
+	CryptoKey  string `env:"CRYPTO_KEY"`
 }
 
 func NewAgentConfig() (*AgentConfig, error) {
@@ -33,5 +34,6 @@ func parseAgentFlags(cfg *AgentConfig) {
 	flag.IntVar(&cfg.PollIntr, "p", 2, "each time to poll metrics")
 	flag.StringVar(&cfg.Key, "k", "", "key for making hash")
 	flag.IntVar(&cfg.RateLimit, "l", 1, "number of simultaneous requests")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "./public.pem", "path to rsa public key")
 	flag.Parse()
 }

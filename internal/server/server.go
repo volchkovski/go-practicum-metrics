@@ -4,6 +4,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"github.com/volchkovski/go-practicum-metrics/internal/rsakey"
 	"io"
 	"os"
 	"os/signal"
@@ -56,7 +57,13 @@ func Run(cfg *configs.ServerConfig) (err error) {
 		}
 	}
 
-	router := routers.NewMetricRouter(cfg.Key, service)
+	privRSA, err := rsakey.GetPrivateKey(cfg.CryptoKey)
+	if err != nil && err != rsakey.ErrEmptyPath {
+		logger.Log.Errorf("Failed to load rsa private key: %s", err.Error())
+		return
+	}
+
+	router := routers.NewMetricRouter(cfg.Key, privRSA, service)
 	httpserver := httpserver.New(router, cfg.Addr)
 
 	httpserver.Start()

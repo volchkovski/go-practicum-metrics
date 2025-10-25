@@ -6,8 +6,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/volchkovski/go-practicum-metrics/internal/rsakey"
 	"log"
 	"math/rand"
 	"net/http"
@@ -39,9 +43,14 @@ type Agent struct {
 	client     *resty.Client
 	key        string
 	rateLimit  int
+	publicRSA  *rsa.PublicKey
 }
 
 func New(cfg *configs.AgentConfig) *Agent {
+	pubRSA, err := rsakey.GetPublicKey(cfg.CryptoKey)
+	if err != nil && !errors.Is(err, rsakey.ErrEmptyPath) {
+		log.Fatal(err)
+	}
 	return &Agent{
 		mstorage:   NewMetricsStorage(),
 		repIntr:    time.Duration(cfg.ReportIntr) * time.Second,
@@ -51,6 +60,7 @@ func New(cfg *configs.AgentConfig) *Agent {
 		client:     NewRestyClient(),
 		key:        cfg.Key,
 		rateLimit:  cfg.RateLimit,
+		publicRSA:  pubRSA,
 	}
 }
 
@@ -222,6 +232,12 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 	p, err := json.Marshal(metrics)
 	if err != nil {
 		return err
+	}
+
+	if a.publicRSA != nil {
+		if p, err = rsa.EncryptPKCS1v15(cryptorand.Reader, a.publicRSA, p); err != nil {
+			return fmt.Errorf("failed to encrypt: %w", err)
+		}
 	}
 
 	var buff bytes.Buffer
