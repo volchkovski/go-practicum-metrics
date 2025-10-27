@@ -58,22 +58,22 @@ func Run(cfg *configs.ServerConfig) (err error) {
 	}
 
 	privRSA, err := rsakey.GetPrivateKey(cfg.CryptoKey)
-	if err != nil && err != rsakey.ErrEmptyPath {
+	if err != nil && errors.Is(err, rsakey.ErrEmptyPath) {
 		logger.Log.Errorf("Failed to load rsa private key: %s", err.Error())
 		return
 	}
 
 	router := routers.NewMetricRouter(cfg.Key, privRSA, service)
-	httpserver := httpserver.New(router, cfg.Addr)
+	hs := httpserver.New(router, cfg.Addr)
 
-	httpserver.Start()
+	hs.Start()
 	b.Start()
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case err = <-httpserver.Notify():
+	case err = <-hs.Notify():
 		return
 	case err = <-b.Notify():
 		return
