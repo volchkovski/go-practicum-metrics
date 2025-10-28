@@ -115,7 +115,8 @@ func TestParseAgentFlags(t *testing.T) {
 		config := &AgentConfig{}
 
 		assert.NotPanics(t, func() {
-			parseAgentFlags(config, args)
+			err := parseAgentFlags(config, args)
+			assert.NoError(t, err)
 		})
 
 		assert.Equal(t, "flagtest.com:8080", config.ServerAddr)

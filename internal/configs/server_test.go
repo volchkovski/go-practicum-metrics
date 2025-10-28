@@ -131,7 +131,8 @@ func TestParseServerFlags(t *testing.T) {
 		config := &ServerConfig{}
 
 		assert.NotPanics(t, func() {
-			parseServerConfigFields(config, args)
+			err := parseServerConfigFields(config, args)
+			assert.NoError(t, err)
 		})
 
 		assert.Equal(t, ":3000", config.Addr)
