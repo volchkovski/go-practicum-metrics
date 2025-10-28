@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/volchkovski/go-practicum-metrics/internal/rsakey"
 	"log"
 	"math/rand"
 	"net/http"
@@ -23,6 +22,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/volchkovski/go-practicum-metrics/internal/rsakey"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -93,7 +94,16 @@ func (a *Agent) runReportingLoop(metricsChunks chan<- []*m.Metrics, interrupt <-
 	for {
 		select {
 		case s := <-interrupt:
-			logger.Log.Infoln("server - Run - signal: " + s.String())
+			logger.Log.Infoln("agent - Run - signal: " + s.String())
+			// Отправляем последние метрики перед завершением
+			logger.Log.Infoln("Sending final metrics before shutdown...")
+			lastMetrics := a.mstorage.ReadMetrics()
+			if len(lastMetrics) > 0 {
+				metricsChunks <- lastMetrics
+			}
+			// Ждем немного для обработки последних метрик воркерами
+			time.Sleep(100 * time.Millisecond)
+			logger.Log.Infoln("Agent graceful shutdown completed")
 			return
 		case <-repTicker.C:
 			metricsChunks <- a.mstorage.ReadMetrics()
@@ -103,7 +113,7 @@ func (a *Agent) runReportingLoop(metricsChunks chan<- []*m.Metrics, interrupt <-
 
 func (a *Agent) setupSignalHandler() chan os.Signal {
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	return interrupt
 }
 

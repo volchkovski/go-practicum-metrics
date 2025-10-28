@@ -30,19 +30,30 @@ type MetricsBackup struct {
 	fp       string
 	interval time.Duration
 	notify   chan error
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func NewMetricsBackup(mgp metricsGetPusher, fp string, intr int) *MetricsBackup {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &MetricsBackup{
 		mgp:      mgp,
 		fp:       fp,
 		interval: time.Duration(intr) * time.Second,
 		notify:   make(chan error, 1),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 }
 
 func (b *MetricsBackup) Notify() chan error {
 	return b.notify
+}
+
+func (b *MetricsBackup) Stop() error {
+	b.cancel()
+	// Выполняем финальное сохранение перед завершением
+	return b.dumpMetrics()
 }
 
 // ValidateFilePath проверяет корректность пути к файлу
@@ -118,15 +129,23 @@ func (b *MetricsBackup) restoreMetrics(m metrics) error {
 
 func (b *MetricsBackup) Start() {
 	go func() {
+		ticker := time.NewTicker(b.interval)
+		defer ticker.Stop()
+
 		for {
-			time.Sleep(b.interval)
-			err := b.dumpMetrics()
-			if err != nil {
-				b.notify <- err
-				break
+			select {
+			case <-b.ctx.Done():
+				close(b.notify)
+				return
+			case <-ticker.C:
+				err := b.dumpMetrics()
+				if err != nil {
+					b.notify <- err
+					close(b.notify)
+					return
+				}
 			}
 		}
-		close(b.notify)
 	}()
 }
 
