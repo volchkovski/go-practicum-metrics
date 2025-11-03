@@ -16,6 +16,10 @@ type metricsProcessor interface {
 	handlers.DBPinger
 }
 
+// NewMetricRouter creates a new HTTP router with metric endpoints.
+// It configures routes for collecting and retrieving metrics with optional security middleware.
+// The secretKey parameter enables hash-based authentication if provided.
+// Debug endpoints (pprof) are conditionally added based on build tags.
 func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
 	r := chi.NewRouter()
 	r.Use(mw.WithLogging)
@@ -36,5 +40,8 @@ func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
 		r.With(mw.WithCompress).Post(`/`, handlers.MetricHandlerJSON(s))
 		r.Get(`/{tp}/{nm}`, handlers.MetricHandler(s))
 	})
+
+	// Add debug routes conditionally based on build tags
+	addDebugRoutes(r)
 	return r
 }

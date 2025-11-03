@@ -1,3 +1,5 @@
+// Package agent provides the metrics collection agent that gathers
+// system metrics and sends them to a metrics server via HTTP.
 package agent
 
 import (
@@ -6,11 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
-	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	"log"
 	"math/rand"
 	"net/http"
@@ -22,6 +19,12 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/volchkovski/go-practicum-metrics/internal/hasher"
+	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
@@ -61,7 +64,10 @@ func (a *Agent) Run() {
 	metricsChunks := make(chan []*m.Metrics)
 	defer close(metricsChunks)
 
+	logger.Log.Infoln("Starting workers")
 	a.startPostWorkers(metricsChunks)
+
+	logger.Log.Infoln("Starting metric collection")
 	a.startMetricCollection(ctx)
 
 	interrupt := a.setupSignalHandler()
@@ -69,6 +75,7 @@ func (a *Agent) Run() {
 	repTicker := time.NewTicker(a.repIntr)
 	defer repTicker.Stop()
 
+	logger.Log.Infoln("Starting reporting loop")
 	a.runReportingLoop(metricsChunks, interrupt, repTicker)
 }
 
@@ -91,19 +98,22 @@ func (a *Agent) setupSignalHandler() chan os.Signal {
 }
 
 func (a *Agent) startMetricCollection(ctx context.Context) {
-	pollTicker := time.NewTicker(a.pollIntr)
-	defer pollTicker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-pollTicker.C:
-			a.collectAllMetrics()
+	go func() {
+		pollTicker := time.NewTicker(a.pollIntr)
+		defer pollTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-pollTicker.C:
+				a.collectAllMetrics()
+			}
 		}
-	}
+	}()
 }
 
 func (a *Agent) startPostWorkers(metricsChunks <-chan []*m.Metrics) {
+	logger.Log.Debugf("Workers number: %d", a.rateLimit)
 	for i := 0; i < a.rateLimit; i++ {
 		go a.postWorker(metricsChunks)
 	}
@@ -202,7 +212,7 @@ func gaugeVal(stat *runtime.MemStats, fname string) (float64, bool) {
 }
 
 func (a *Agent) postMetrics(metrics []*m.Metrics) error {
-	logger.Log.Infoln("im happening")
+	logger.Log.Infoln("Posting metrics")
 	if len(metrics) == 0 {
 		logger.Log.Warn("empty metrics slice")
 		return nil

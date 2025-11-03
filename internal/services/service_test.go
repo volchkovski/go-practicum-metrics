@@ -69,4 +69,56 @@ func TestMetricService(t *testing.T) {
 		}
 		assert.Equal(t, []models.CounterMetric{{Name: "test", Value: 123}}, counters)
 	})
+
+	t.Run("close service", func(t *testing.T) {
+		strg.EXPECT().Close().Return(nil)
+		err := mservice.Close()
+		require.Nil(t, err)
+	})
+
+	t.Run("ping database", func(t *testing.T) {
+		strg.EXPECT().Ping(ctx).Return(nil)
+		err := mservice.PingDB(ctx)
+		require.Nil(t, err)
+	})
+
+	t.Run("push metrics batch", func(t *testing.T) {
+		gauges := []*models.GaugeMetric{
+			{Name: "gauge1", Value: 1.5},
+			{Name: "gauge2", Value: 2.5},
+		}
+		counters := []*models.CounterMetric{
+			{Name: "counter1", Value: 10},
+			{Name: "counter2", Value: 20},
+		}
+
+		expectedGauges := map[string]float64{
+			"gauge1": 1.5,
+			"gauge2": 2.5,
+		}
+		expectedCounters := map[string]int64{
+			"counter1": 10,
+			"counter2": 20,
+		}
+
+		strg.EXPECT().WriteGaugesCounters(ctx, expectedGauges, expectedCounters).Return(nil)
+		err := mservice.PushMetrics(ctx, gauges, counters)
+		require.Nil(t, err)
+	})
+
+	t.Run("push metrics with duplicate counters", func(t *testing.T) {
+		counters := []*models.CounterMetric{
+			{Name: "counter1", Value: 10},
+			{Name: "counter1", Value: 5}, // Same name, should accumulate
+		}
+
+		expectedGauges := map[string]float64{}
+		expectedCounters := map[string]int64{
+			"counter1": 15, // 10 + 5
+		}
+
+		strg.EXPECT().WriteGaugesCounters(ctx, expectedGauges, expectedCounters).Return(nil)
+		err := mservice.PushMetrics(ctx, nil, counters)
+		require.Nil(t, err)
+	})
 }

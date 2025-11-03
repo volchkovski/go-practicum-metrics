@@ -1,3 +1,4 @@
+// Package server provides the main server application logic and startup functionality.
 package server
 
 import (

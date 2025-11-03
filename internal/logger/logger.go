@@ -1,3 +1,5 @@
+// Package logger provides structured logging functionality using zap logger.
+// It supports different environments (production and local) with configurable log levels.
 package logger
 
 import (

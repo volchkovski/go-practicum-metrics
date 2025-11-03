@@ -1,3 +1,6 @@
+// Package configs provides configuration structures and parsing logic
+// for the metrics collection system. It handles command-line flags
+// and environment variables for both agent and server components.
 package configs
 
 import (

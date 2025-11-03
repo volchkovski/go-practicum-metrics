@@ -1,10 +1,14 @@
+// Package backup provides functionality for persisting metrics data to files
+// and restoring it on startup. It supports JSON-based backup and restore operations.
 package backup
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/volchkovski/go-practicum-metrics/internal/handlers"
@@ -41,7 +45,39 @@ func (b *MetricsBackup) Notify() chan error {
 	return b.notify
 }
 
+// ValidateFilePath проверяет корректность пути к файлу
+func ValidateFilePath(filePath string) error {
+	if filePath == "" {
+		return errors.New("file path cannot be empty")
+	}
+
+	// Проверяем что директория существует или может быть создана
+	dir := filepath.Dir(filePath)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("cannot create directory %s: %w", dir, err)
+		}
+	}
+
+	return nil
+}
+
+// IsFileExists проверяет существование файла
+func IsFileExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	return !os.IsNotExist(err)
+}
+
 func (b *MetricsBackup) Restore() (err error) {
+	if validationErr := ValidateFilePath(b.fp); validationErr != nil {
+		return validationErr
+	}
+
+	if !IsFileExists(b.fp) {
+		// Файл не существует - это не ошибка при первом запуске
+		return nil
+	}
+
 	file, err := os.OpenFile(b.fp, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return
@@ -51,23 +87,32 @@ func (b *MetricsBackup) Restore() (err error) {
 			err = errors.Join(err, errClose)
 		}
 	}()
+
 	var m metrics
 	err = json.NewDecoder(file).Decode(&m)
 	if err != nil {
 		return
 	}
+
+	return b.restoreMetrics(m)
+}
+
+// restoreMetrics восстанавливает метрики из структуры данных
+func (b *MetricsBackup) restoreMetrics(m metrics) error {
+	ctx := context.Background()
+
 	for _, gauge := range m.Gauges {
-		err = b.mgp.PushGaugeMetric(context.Background(), gauge)
-		if err != nil {
-			return
+		if err := b.mgp.PushGaugeMetric(ctx, gauge); err != nil {
+			return fmt.Errorf("failed to restore gauge metric %s: %w", gauge.Name, err)
 		}
 	}
+
 	for _, counter := range m.Counters {
-		err = b.mgp.PushCounterMetric(context.Background(), counter)
-		if err != nil {
-			return
+		if err := b.mgp.PushCounterMetric(ctx, counter); err != nil {
+			return fmt.Errorf("failed to restore counter metric %s: %w", counter.Name, err)
 		}
 	}
+
 	return nil
 }
 
@@ -95,6 +140,16 @@ func (b *MetricsBackup) dumpMetrics() (err error) {
 	if err != nil {
 		return
 	}
+
+	return b.writeMetricsToFile(gauges, counters)
+}
+
+// writeMetricsToFile записывает метрики в файл
+func (b *MetricsBackup) writeMetricsToFile(gauges []*models.GaugeMetric, counters []*models.CounterMetric) (err error) {
+	if validationErr := ValidateFilePath(b.fp); validationErr != nil {
+		return validationErr
+	}
+
 	file, err := os.Create(b.fp)
 	if err != nil {
 		return
