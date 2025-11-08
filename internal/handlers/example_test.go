@@ -32,11 +32,11 @@ func ExampleCollectMetricHandler() {
 	// Make request to store gauge metric
 	resp, err := http.Post(server.URL+"/update/gauge/temperature/23.5", "", nil)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	fmt.Printf("Status: %d\n", resp.StatusCode)

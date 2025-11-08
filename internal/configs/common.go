@@ -21,8 +21,12 @@ func processConfigFile[T Config](cfg T) ([]string, error) {
 	if err := configFileFlags.Parse(os.Args[1:]); err != nil {
 		return os.Args[1:], nil
 	}
-	envConfigFile := os.Getenv("CONFIG")
-	for _, path := range []string{c, config, envConfigFile} {
+	envConfigFile, envExists := os.LookupEnv("CONFIG")
+	paths := []string{c, config}
+	if envExists {
+		paths = append(paths, envConfigFile)
+	}
+	for _, path := range paths {
 		if path != "" {
 			if err := parseConfigFile(cfg, path); err != nil {
 				return nil, fmt.Errorf("failed to parse config file: %w", err)
