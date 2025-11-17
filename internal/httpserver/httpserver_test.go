@@ -1,8 +1,10 @@
 package httpserver
 
 import (
+	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -14,8 +16,9 @@ func TestNew(t *testing.T) {
 		server := New(router, ":8080")
 
 		assert.NotNil(t, server)
-		assert.Equal(t, ":8080", server.addr)
-		assert.Equal(t, router, server.router)
+		assert.NotNil(t, server.server)
+		assert.Equal(t, ":8080", server.server.Addr)
+		assert.Equal(t, router, server.server.Handler)
 		assert.NotNil(t, server.notify)
 	})
 }
@@ -53,5 +56,26 @@ func TestStart(t *testing.T) {
 		default:
 			// Server might not have started yet, that's ok for this test
 		}
+	})
+}
+
+func TestShutdown(t *testing.T) {
+	t.Run("shutdown server gracefully", func(t *testing.T) {
+		router := chi.NewRouter()
+		router.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+
+		server := New(router, ":8080")
+
+		// Test shutdown without starting (should not panic and may succeed)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		assert.NotPanics(t, func() {
+			err := server.Shutdown(ctx)
+			// No specific error expectation - shutdown can succeed even if server wasn't running
+			_ = err
+		})
 	})
 }

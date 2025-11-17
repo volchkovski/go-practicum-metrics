@@ -6,7 +6,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -19,6 +22,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/volchkovski/go-practicum-metrics/internal/rsakey"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -39,9 +44,14 @@ type Agent struct {
 	client     *resty.Client
 	key        string
 	rateLimit  int
+	publicRSA  *rsa.PublicKey
 }
 
-func New(cfg *configs.AgentConfig) *Agent {
+func New(cfg *configs.AgentConfig) (*Agent, error) {
+	pubRSA, err := rsakey.GetPublicKey(cfg.CryptoKey)
+	if err != nil && !errors.Is(err, rsakey.ErrEmptyPath) {
+		return nil, err
+	}
 	return &Agent{
 		mstorage:   NewMetricsStorage(),
 		repIntr:    time.Duration(cfg.ReportIntr) * time.Second,
@@ -51,50 +61,55 @@ func New(cfg *configs.AgentConfig) *Agent {
 		client:     NewRestyClient(),
 		key:        cfg.Key,
 		rateLimit:  cfg.RateLimit,
-	}
+		publicRSA:  pubRSA,
+	}, nil
 }
 
-func (a *Agent) Run() {
+func (a *Agent) Run() error {
 	if err := logger.Initialize("debug", "local"); err != nil {
-		panic(fmt.Sprintf("logger initialization fail: %v", err))
+		return fmt.Errorf("logger initialization fail: %w", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	metricsChunks := make(chan []*m.Metrics)
-	defer close(metricsChunks)
 
 	logger.Log.Infoln("Starting workers")
-	a.startPostWorkers(metricsChunks)
+	var wg sync.WaitGroup
+	a.startPostWorkers(&wg, metricsChunks)
 
 	logger.Log.Infoln("Starting metric collection")
 	a.startMetricCollection(ctx)
-
-	interrupt := a.setupSignalHandler()
 
 	repTicker := time.NewTicker(a.repIntr)
 	defer repTicker.Stop()
 
 	logger.Log.Infoln("Starting reporting loop")
-	a.runReportingLoop(metricsChunks, interrupt, repTicker)
+	a.runReportingLoop(ctx, &wg, metricsChunks, repTicker)
+	return nil
 }
 
-func (a *Agent) runReportingLoop(metricsChunks chan<- []*m.Metrics, interrupt <-chan os.Signal, repTicker *time.Ticker) {
+func (a *Agent) runReportingLoop(ctx context.Context, wg *sync.WaitGroup, metricsChunks chan<- []*m.Metrics, repTicker *time.Ticker) {
 	for {
 		select {
-		case s := <-interrupt:
-			logger.Log.Infoln("server - Run - signal: " + s.String())
+		case <-ctx.Done():
+			logger.Log.Infoln("agent - runReportingLoop: " + ctx.Err().Error())
+			// Отправляем последние метрики перед завершением
+			logger.Log.Infoln("Sending final metrics before shutdown...")
+			lastMetrics := a.mstorage.ReadMetrics()
+			if len(lastMetrics) > 0 {
+				metricsChunks <- lastMetrics
+			}
+			// Закрываем канал и ждем завершения всех воркеров
+			close(metricsChunks)
+			logger.Log.Infoln("Waiting for workers to finish...")
+			wg.Wait()
+			logger.Log.Infoln("Agent graceful shutdown completed")
 			return
 		case <-repTicker.C:
 			metricsChunks <- a.mstorage.ReadMetrics()
 		}
 	}
-}
-
-func (a *Agent) setupSignalHandler() chan os.Signal {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-	return interrupt
 }
 
 func (a *Agent) startMetricCollection(ctx context.Context) {
@@ -112,14 +127,16 @@ func (a *Agent) startMetricCollection(ctx context.Context) {
 	}()
 }
 
-func (a *Agent) startPostWorkers(metricsChunks <-chan []*m.Metrics) {
+func (a *Agent) startPostWorkers(wg *sync.WaitGroup, metricsChunks <-chan []*m.Metrics) {
 	logger.Log.Debugf("Workers number: %d", a.rateLimit)
 	for i := 0; i < a.rateLimit; i++ {
-		go a.postWorker(metricsChunks)
+		wg.Add(1)
+		go a.postWorker(wg, metricsChunks)
 	}
 }
 
-func (a *Agent) postWorker(metricsChunks <-chan []*m.Metrics) {
+func (a *Agent) postWorker(wg *sync.WaitGroup, metricsChunks <-chan []*m.Metrics) {
+	defer wg.Done()
 	for metricsChunk := range metricsChunks {
 		if err := a.postMetrics(metricsChunk); err != nil {
 			logger.Log.Errorf("Failed to post metrics: %v", err)
@@ -222,6 +239,12 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 	p, err := json.Marshal(metrics)
 	if err != nil {
 		return err
+	}
+
+	if a.publicRSA != nil {
+		if p, err = rsa.EncryptPKCS1v15(cryptorand.Reader, a.publicRSA, p); err != nil {
+			return fmt.Errorf("failed to encrypt: %w", err)
+		}
 	}
 
 	var buff bytes.Buffer

@@ -20,8 +20,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	a := agent.New(cfg)
-	a.Run()
+	a, err := agent.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := a.Run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func showBuildInfo() {

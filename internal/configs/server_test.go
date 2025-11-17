@@ -121,8 +121,7 @@ func TestParseServerFlags(t *testing.T) {
 	t.Run("parse server flags", func(t *testing.T) {
 		// Reset flags for clean test
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-		os.Args = []string{
-			"test",
+		args := []string{
 			"-a", ":3000",
 			"-i", "60",
 			"-f", "/tmp/server-metrics.json",
@@ -132,7 +131,8 @@ func TestParseServerFlags(t *testing.T) {
 		config := &ServerConfig{}
 
 		assert.NotPanics(t, func() {
-			parseServerFlags(config)
+			err := parseServerConfigFields(config, args)
+			assert.NoError(t, err)
 		})
 
 		assert.Equal(t, ":3000", config.Addr)

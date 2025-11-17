@@ -2,12 +2,16 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/volchkovski/go-practicum-metrics/internal/rsakey"
 
 	"github.com/volchkovski/go-practicum-metrics/internal/backup"
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
@@ -56,23 +60,52 @@ func Run(cfg *configs.ServerConfig) (err error) {
 		}
 	}
 
-	router := routers.NewMetricRouter(cfg.Key, service)
-	httpserver := httpserver.New(router, cfg.Addr)
+	privRSA, err := rsakey.GetPrivateKey(cfg.CryptoKey)
+	if err != nil && errors.Is(err, rsakey.ErrEmptyPath) {
+		logger.Log.Errorf("Failed to load rsa private key: %s", err.Error())
+		return
+	}
 
-	httpserver.Start()
+	router := routers.NewMetricRouter(cfg.Key, privRSA, service)
+	hs := httpserver.New(router, cfg.Addr)
+
+	hs.Start()
 	b.Start()
 
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
 	select {
-	case err = <-httpserver.Notify():
+	case err = <-hs.Notify():
 		return
 	case err = <-b.Notify():
 		return
 	case s := <-interrupt:
 		logger.Log.Infoln("server - Run - signal: " + s.String())
+		return gracefulShutdown(hs, b)
+	}
+}
+
+func gracefulShutdown(hs *httpserver.HTTPServer, b *backup.MetricsBackup) error {
+	logger.Log.Infoln("Starting graceful shutdown...")
+
+	// Создаем контекст с таймаутом для shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Останавливаем backup и делаем финальное сохранение
+	logger.Log.Infoln("Stopping backup and saving final metrics...")
+	if err := b.Stop(); err != nil {
+		logger.Log.Errorf("Error during backup final save: %v", err)
 	}
 
+	// Останавливаем HTTP сервер
+	logger.Log.Infoln("Shutting down HTTP server...")
+	if err := hs.Shutdown(ctx); err != nil {
+		logger.Log.Errorf("Error during HTTP server shutdown: %v", err)
+		return err
+	}
+
+	logger.Log.Infoln("Server graceful shutdown completed")
 	return nil
 }

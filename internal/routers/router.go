@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"crypto/rsa"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -20,7 +21,7 @@ type metricsProcessor interface {
 // It configures routes for collecting and retrieving metrics with optional security middleware.
 // The secretKey parameter enables hash-based authentication if provided.
 // Debug endpoints (pprof) are conditionally added based on build tags.
-func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
+func NewMetricRouter(secretKey string, rsaKey *rsa.PrivateKey, s metricsProcessor) chi.Router {
 	r := chi.NewRouter()
 	r.Use(mw.WithLogging)
 	if secretKey != "" {
@@ -28,7 +29,13 @@ func NewMetricRouter(secretKey string, s metricsProcessor) chi.Router {
 	}
 	r.With(mw.WithCompress).Get(`/`, handlers.AllMetricsHandler(s))
 	r.Get(`/ping`, handlers.PingDB(s))
-	r.With(mw.WithCompress).Post(`/updates/`, handlers.CollectMetricsHandlerJSON(s))
+	r.Group(func(r chi.Router) {
+		r.Use(mw.WithCompress)
+		if rsaKey != nil {
+			r.Use(mw.WithDecrypt(rsaKey))
+		}
+		r.Post(`/updates/`, handlers.CollectMetricsHandlerJSON(s))
+	})
 	r.Route(`/update`, func(r chi.Router) {
 		r.With(mw.WithCompress).Post(`/`, handlers.CollectMetricHandlerJSON(s))
 		r.Route(`/{tp}`, func(r chi.Router) {

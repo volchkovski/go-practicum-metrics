@@ -25,18 +25,18 @@ func ExampleCollectMetricHandler() {
 	service := services.NewMetricService(storage)
 
 	// Create router to properly handle URL parameters
-	router := routers.NewMetricRouter("", service)
+	router := routers.NewMetricRouter("", nil, service)
 	server := httptest.NewServer(router)
 	defer server.Close()
 
 	// Make request to store gauge metric
 	resp, err := http.Post(server.URL+"/update/gauge/temperature/23.5", "", nil)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	fmt.Printf("Status: %d\n", resp.StatusCode)
@@ -53,7 +53,7 @@ func ExampleMetricHandler() {
 	_ = storage.WriteGauge(context.Background(), "temperature", 23.5)
 
 	// Create router to properly handle URL parameters
-	router := routers.NewMetricRouter("", service)
+	router := routers.NewMetricRouter("", nil, service)
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -212,7 +212,7 @@ func ExampleNewMetricRouter() {
 	service := services.NewMetricService(storage)
 
 	// Create router with no secret key (no hash middleware)
-	router := routers.NewMetricRouter("", service)
+	router := routers.NewMetricRouter("", nil, service)
 
 	// Start a test server
 	server := httptest.NewServer(router)

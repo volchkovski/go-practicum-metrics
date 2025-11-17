@@ -2,9 +2,8 @@ package agent
 
 import (
 	"context"
-	"os"
 	"runtime"
-	"syscall"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,7 +22,8 @@ func TestNew(t *testing.T) {
 			RateLimit:  1,
 		}
 
-		agent := New(config)
+		agent, err := New(config)
+		assert.NoError(t, err)
 
 		assert.NotNil(t, agent)
 		assert.NotNil(t, agent.mstorage)
@@ -99,32 +99,19 @@ func TestGaugeVal(t *testing.T) {
 	})
 }
 
-func TestSetupSignalHandler(t *testing.T) {
-	t.Run("creates signal channel", func(t *testing.T) {
+func TestAgentSignalHandling(t *testing.T) {
+	t.Run("agent creation with signal context", func(t *testing.T) {
 		config := &configs.AgentConfig{
 			ServerAddr: "localhost:8080",
 			ReportIntr: 10,
 			PollIntr:   2,
 			RateLimit:  1,
 		}
-		agent := New(config)
+		agent, err := New(config)
+		assert.NoError(t, err)
 
-		interrupt := agent.setupSignalHandler()
-
-		assert.NotNil(t, interrupt)
-
-		// Test that we can send a signal to the channel
-		go func() {
-			time.Sleep(10 * time.Millisecond)
-			interrupt <- syscall.SIGTERM
-		}()
-
-		select {
-		case sig := <-interrupt:
-			assert.Equal(t, syscall.SIGTERM, sig)
-		case <-time.After(100 * time.Millisecond):
-			t.Fatal("Expected to receive signal")
-		}
+		// Since setupSignalHandler was removed, test that agent creation works
+		assert.NotNil(t, agent)
 	})
 }
 
@@ -136,7 +123,8 @@ func TestStartMetricCollection(t *testing.T) {
 			PollIntr:   1, // 1 second for faster test
 			RateLimit:  1,
 		}
-		agent := New(config)
+		agent, err := New(config)
+		assert.NoError(t, err)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
@@ -159,13 +147,15 @@ func TestStartPostWorkers(t *testing.T) {
 			PollIntr:   2,
 			RateLimit:  2, // Test with 2 workers
 		}
-		agent := New(config)
+		agent, err := New(config)
+		assert.NoError(t, err)
 
 		metricsChunks := make(chan []*m.Metrics, 1)
 		defer close(metricsChunks)
 
+		var wg sync.WaitGroup
 		assert.NotPanics(t, func() {
-			agent.startPostWorkers(metricsChunks)
+			agent.startPostWorkers(&wg, metricsChunks)
 		})
 
 		// Give workers a moment to start
@@ -174,38 +164,39 @@ func TestStartPostWorkers(t *testing.T) {
 }
 
 func TestRunReportingLoop(t *testing.T) {
-	t.Run("handles interrupt signal", func(t *testing.T) {
+	t.Run("handles context cancellation", func(t *testing.T) {
 		config := &configs.AgentConfig{
 			ServerAddr: "localhost:8080",
 			ReportIntr: 10,
 			PollIntr:   2,
 			RateLimit:  1,
 		}
-		agent := New(config)
+		agent, err := New(config)
+		assert.NoError(t, err)
 
 		metricsChunks := make(chan []*m.Metrics, 1)
-		defer close(metricsChunks)
 
-		interrupt := make(chan os.Signal, 1)
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+
 		repTicker := time.NewTicker(1 * time.Hour) // Long interval so it doesn't trigger
 		defer repTicker.Stop()
+
+		var wg sync.WaitGroup
 
 		// Start reporting loop in goroutine
 		done := make(chan bool)
 		go func() {
-			agent.runReportingLoop(metricsChunks, interrupt, repTicker)
+			agent.runReportingLoop(ctx, &wg, metricsChunks, repTicker)
 			done <- true
 		}()
 
-		// Send interrupt signal
-		interrupt <- syscall.SIGTERM
-
-		// Wait for loop to exit
+		// Wait for context to be done or loop to exit
 		select {
 		case <-done:
 			// Success
 		case <-time.After(100 * time.Millisecond):
-			t.Fatal("Expected reporting loop to exit on interrupt")
+			t.Fatal("Expected reporting loop to exit on context cancel")
 		}
 	})
 }

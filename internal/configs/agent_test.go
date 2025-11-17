@@ -104,8 +104,7 @@ func TestParseAgentFlags(t *testing.T) {
 	t.Run("parse flags", func(t *testing.T) {
 		// Reset flags for clean test
 		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-		os.Args = []string{
-			"test",
+		args := []string{
 			"-a", "flagtest.com:8080",
 			"-r", "20",
 			"-p", "5",
@@ -116,7 +115,8 @@ func TestParseAgentFlags(t *testing.T) {
 		config := &AgentConfig{}
 
 		assert.NotPanics(t, func() {
-			parseAgentFlags(config)
+			err := parseAgentFlags(config, args)
+			assert.NoError(t, err)
 		})
 
 		assert.Equal(t, "flagtest.com:8080", config.ServerAddr)

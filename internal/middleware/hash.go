@@ -30,9 +30,6 @@ func WithHash(key string) func(http.Handler) http.Handler {
 			if reqHash == "" {
 				h.ServeHTTP(w, r)
 				return
-				//msg := fmt.Sprintf("Header %s is required", hasher.HashHeaderKey)
-				//http.Error(w, msg, http.StatusBadRequest)
-				//return
 			}
 			body, err := io.ReadAll(r.Body)
 			if err != nil {

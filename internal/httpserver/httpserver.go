@@ -2,30 +2,36 @@
 package httpserver
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type HTTPServer struct {
-	router chi.Router
-	addr   string
+	server *http.Server
 	notify chan error
 }
 
 func New(r chi.Router, addr string) *HTTPServer {
 	return &HTTPServer{
-		router: r,
-		addr:   addr,
+		server: &http.Server{
+			Addr:    addr,
+			Handler: r,
+		},
 		notify: make(chan error, 1),
 	}
 }
 
 func (s *HTTPServer) Start() {
 	go func() {
-		s.notify <- http.ListenAndServe(s.addr, s.router)
+		s.notify <- s.server.ListenAndServe()
 		close(s.notify)
 	}()
+}
+
+func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
 }
 
 func (s *HTTPServer) Notify() chan error {
