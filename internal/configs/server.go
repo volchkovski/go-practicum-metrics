@@ -19,6 +19,7 @@ type ServerConfig struct {
 	DSN             string `env:"DATABASE_DSN" json:"database_dsn"`
 	Key             string `env:"KEY"`
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 func (cfg *ServerConfig) UnmarshalJSON(data []byte) error {
@@ -63,5 +64,6 @@ func parseServerConfigFields(cfg *ServerConfig, args []string) error {
 	configFieldsFlags.StringVar(&cfg.DSN, "d", "", "postgres data source name")
 	configFieldsFlags.StringVar(&cfg.Key, "k", "", "key for making hash")
 	configFieldsFlags.StringVar(&cfg.CryptoKey, "crypto-key", "./private.pem", "path to rsa private key")
+	configFieldsFlags.StringVar(&cfg.TrustedSubnet, "t", "", "trusted subnet in CIDR notation")
 	return configFieldsFlags.Parse(args)
 }
