@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -266,6 +267,12 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 		hshr := hasher.New(a.key)
 		req = req.SetHeader(hasher.HashHeaderKey, hshr.Hash(buff.Bytes()))
 	}
+
+	// Add X-Real-IP header with the host's IP address
+	if localIP := getLocalIP(); localIP != "" {
+		req = req.SetHeader("X-Real-IP", localIP)
+	}
+
 	req = req.SetBody(&buff)
 	res, err := req.Post(url)
 	if err != nil {
@@ -282,4 +289,26 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 func getRandomFloat() float64 {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	return r.Float64()
+}
+
+// getLocalIP returns the non-loopback local IP of the host.
+// It returns an empty string if no suitable IP is found.
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		logger.Log.Warnf("Failed to get interface addresses: %v", err)
+		return ""
+	}
+
+	for _, address := range addrs {
+		// Check if the address is an IP address (not a network)
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+
+	logger.Log.Warn("No suitable local IP address found")
+	return ""
 }
