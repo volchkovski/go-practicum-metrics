@@ -114,24 +114,12 @@ func TestNew(t *testing.T) {
 			GRPCServerAddr: "invalid:99999", // Invalid gRPC server
 		}
 
-		// This should timeout when trying to connect to gRPC server
-		done := make(chan struct{})
-		var agent *Agent
-		var err error
-
-		go func() {
-			agent, err = New(config)
-			close(done)
-		}()
-
-		// Wait for either completion or timeout
-		select {
-		case <-done:
-			assert.Error(t, err)
-			assert.Nil(t, agent)
-		case <-time.After(15 * time.Second):
-			t.Log("gRPC connection attempt timed out as expected")
-		}
+		// With grpc.NewClient, agent creation should succeed even with invalid gRPC address
+		// Connection errors only occur when actual RPC calls are made
+		agent, err := New(config)
+		assert.NoError(t, err, "Agent creation should not fail with invalid gRPC address as grpc.NewClient doesn't connect immediately")
+		assert.NotNil(t, agent, "Agent should be created")
+		assert.True(t, agent.useGRPC, "Agent should be configured to use gRPC")
 	})
 }
 

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/volchkovski/go-practicum-metrics/internal/grpcapi/pb"
 	"github.com/volchkovski/go-practicum-metrics/internal/models"
 	"go.uber.org/zap"
 )
@@ -128,37 +127,3 @@ func TestGRPCServer_Notify(t *testing.T) {
 		assert.True(t, ok)
 	})
 }
-
-// mockMetricsServer is a minimal implementation of MetricsServiceServer for testing
-type mockMetricsServer struct {
-	pb.UnimplementedMetricsServiceServer
-}
-
-func (m *mockMetricsServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
-	return &pb.PingResponse{}, nil
-}
-
-func (m *mockMetricsServer) PushGauge(ctx context.Context, req *pb.PushGaugeRequest) (*pb.PushGaugeResponse, error) {
-	return &pb.PushGaugeResponse{}, nil
-}
-
-func (m *mockMetricsServer) PushCounter(ctx context.Context, req *pb.PushCounterRequest) (*pb.PushCounterResponse, error) {
-	return &pb.PushCounterResponse{}, nil
-}
-
-func (m *mockMetricsServer) GetGauge(ctx context.Context, req *pb.GetGaugeRequest) (*pb.GetGaugeResponse, error) {
-	return &pb.GetGaugeResponse{Metric: &pb.GaugeMetric{Name: req.Name, Value: 42.0}}, nil
-}
-
-func (m *mockMetricsServer) GetCounter(ctx context.Context, req *pb.GetCounterRequest) (*pb.GetCounterResponse, error) {
-	return &pb.GetCounterResponse{Metric: &pb.CounterMetric{Name: req.Name, Value: 100}}, nil
-}
-
-func (m *mockMetricsServer) GetAllMetrics(ctx context.Context, req *pb.GetAllMetricsRequest) (*pb.GetAllMetricsResponse, error) {
-	return &pb.GetAllMetricsResponse{}, nil
-}
-
-func (m *mockMetricsServer) PushMetrics(ctx context.Context, req *pb.PushMetricsRequest) (*pb.PushMetricsResponse, error) {
-	return &pb.PushMetricsResponse{}, nil
-}
-

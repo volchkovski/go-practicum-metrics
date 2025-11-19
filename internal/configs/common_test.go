@@ -209,7 +209,7 @@ func TestProcessConfigFile_Agent(t *testing.T) {
 		os.Args = []string{"test"}
 		err = os.Setenv("CONFIG", configPath)
 		require.NoError(t, err)
-		defer os.Unsetenv("CONFIG")
+		defer func() { _ = os.Unsetenv("CONFIG") }()
 
 		cfg := &AgentConfig{}
 		args, err := processConfigFile(cfg)

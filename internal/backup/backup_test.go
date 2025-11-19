@@ -321,7 +321,7 @@ func TestMetricsBackup_DumpMetrics(t *testing.T) {
 
 		file, err := os.Open(testFile)
 		require.NoError(t, err)
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		var loadedMetrics metrics
 		err = json.NewDecoder(file).Decode(&loadedMetrics)

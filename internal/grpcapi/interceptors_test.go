@@ -208,7 +208,7 @@ func TestRecoveryInterceptor(t *testing.T) {
 		interceptor := RecoveryInterceptor(logger)
 		
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-			panic(nil)
+			panic("") // panic with empty string instead of nil
 		}
 
 		info := &grpc.UnaryServerInfo{

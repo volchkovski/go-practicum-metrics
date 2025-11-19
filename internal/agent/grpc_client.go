@@ -24,12 +24,8 @@ type GRPCClient struct {
 // NewGRPCClient creates a new gRPC client for metrics
 func NewGRPCClient(serverAddr string, logger *zap.SugaredLogger) (*GRPCClient, error) {
 	// Create connection with retry and timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, serverAddr,
+	conn, err := grpc.NewClient(serverAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 		grpc.WithUnaryInterceptor(retryInterceptor(3)),
 	)
 	if err != nil {

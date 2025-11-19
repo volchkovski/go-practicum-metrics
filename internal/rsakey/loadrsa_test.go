@@ -48,8 +48,8 @@ func TestGetPublicKey(t *testing.T) {
 		loadedKey, err := GetPublicKey(pubKeyPath)
 		assert.NoError(t, err)
 		assert.NotNil(t, loadedKey)
-		assert.Equal(t, privateKey.PublicKey.N, loadedKey.N)
-		assert.Equal(t, privateKey.PublicKey.E, loadedKey.E)
+		assert.Equal(t, privateKey.N, loadedKey.N)
+		assert.Equal(t, privateKey.E, loadedKey.E)
 	})
 
 	// Note: The current implementation has a bug where it doesn't check if pem.Decode returns nil
@@ -109,7 +109,7 @@ func TestGetPrivateKey(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, loadedKey)
 		assert.Equal(t, privateKey.D, loadedKey.D)
-		assert.Equal(t, privateKey.PublicKey.N, loadedKey.PublicKey.N)
+		assert.Equal(t, privateKey.N, loadedKey.N)
 	})
 
 	// Note: The current implementation has a bug where it doesn't check if pem.Decode returns nil

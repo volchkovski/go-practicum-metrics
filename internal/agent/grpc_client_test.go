@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,28 +66,16 @@ func (m *mockMetricsServiceClient) GetAllMetrics(ctx context.Context, req *pb.Ge
 func TestNewGRPCClient(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 
-	t.Run("fails with invalid server address", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-
-		// Create a channel to signal when the function returns
-		done := make(chan struct{})
-		var client *GRPCClient
-		var err error
-
-		go func() {
-			client, err = NewGRPCClient("invalid:99999", logger)
-			close(done)
-		}()
-
-		// Wait for either the function to complete or context timeout
-		select {
-		case <-done:
-			assert.Error(t, err)
-			assert.Nil(t, client)
-		case <-ctx.Done():
-			// This is expected - the connection attempt should timeout
-			t.Log("Connection attempt timed out as expected")
+	t.Run("creates client with invalid server address without blocking", func(t *testing.T) {
+		// With grpc.NewClient (non-blocking), client creation succeeds even with invalid address
+		// Connection errors only occur when actual RPC calls are made
+		client, err := NewGRPCClient("invalid:99999", logger)
+		assert.NoError(t, err, "NewClient should not fail with invalid address as it doesn't connect immediately")
+		assert.NotNil(t, client, "Client should be created")
+		
+		// Cleanup
+		if client != nil {
+			_ = client.Close()
 		}
 	})
 }

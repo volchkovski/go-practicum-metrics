@@ -131,7 +131,7 @@ func TestValidateServerConfig(t *testing.T) {
 func TestGracefulShutdown(t *testing.T) {
 	// Initialize logger for tests
 	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	sugar := logger.Sugar()
 	zap.ReplaceGlobals(logger)
 	
@@ -156,7 +156,7 @@ func TestGracefulShutdown(t *testing.T) {
 		assert.NoError(t, err)
 		
 		// Cleanup
-		service.Close()
+		_ = service.Close()
 	})
 	
 	t.Run("shuts down successfully without gRPC server", func(t *testing.T) {
@@ -172,7 +172,7 @@ func TestGracefulShutdown(t *testing.T) {
 		err := gracefulShutdown(hs, nil, b)
 		assert.NoError(t, err)
 		
-		service.Close()
+		_ = service.Close()
 	})
 	
 	t.Run("handles HTTP server shutdown error gracefully", func(t *testing.T) {
@@ -187,7 +187,7 @@ func TestGracefulShutdown(t *testing.T) {
 		// Shutdown of not-started server shouldn't error
 		assert.NoError(t, err)
 		
-		service.Close()
+		_ = service.Close()
 	})
 }
 
