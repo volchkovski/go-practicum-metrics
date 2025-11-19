@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,42 +36,74 @@ import (
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
 )
 
+// GRPCClientInterface defines the interface for gRPC client operations
+type GRPCClientInterface interface {
+	PushMetrics(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error
+	Close() error
+}
+
 type Agent struct {
-	mstorage   *MetricsStorage
-	repIntr    time.Duration
-	pollIntr   time.Duration
-	serverAddr string
-	pollCount  atomic.Int64
-	client     *resty.Client
-	key        string
-	rateLimit  int
-	publicRSA  *rsa.PublicKey
+	mstorage      *MetricsStorage
+	repIntr       time.Duration
+	pollIntr      time.Duration
+	serverAddr    string
+	pollCount     atomic.Int64
+	client        *resty.Client
+	grpcClient    GRPCClientInterface
+	useGRPC       bool
+	key           string
+	rateLimit     int
+	publicRSA     *rsa.PublicKey
 }
 
 func New(cfg *configs.AgentConfig) (*Agent, error) {
+	if err := logger.Initialize("debug", "local"); err != nil {
+		return nil, fmt.Errorf("logger initialization fail: %w", err)
+	}
+
 	pubRSA, err := rsakey.GetPublicKey(cfg.CryptoKey)
 	if err != nil && !errors.Is(err, rsakey.ErrEmptyPath) {
 		return nil, err
 	}
-	return &Agent{
+
+	agent := &Agent{
 		mstorage:   NewMetricsStorage(),
 		repIntr:    time.Duration(cfg.ReportIntr) * time.Second,
 		pollIntr:   time.Duration(cfg.PollIntr) * time.Second,
 		serverAddr: cfg.ServerAddr,
 		pollCount:  atomic.Int64{},
 		client:     NewRestyClient(),
+		useGRPC:    cfg.UseGRPC,
 		key:        cfg.Key,
 		rateLimit:  cfg.RateLimit,
 		publicRSA:  pubRSA,
-	}, nil
+	}
+
+	// Initialize gRPC client if enabled
+	if cfg.UseGRPC {
+		grpcClient, err := NewGRPCClient(cfg.GRPCServerAddr, logger.Log)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+		}
+		agent.grpcClient = grpcClient
+		logger.Log.Info("gRPC client initialized", "address", cfg.GRPCServerAddr)
+	}
+
+	return agent, nil
 }
 
 func (a *Agent) Run() error {
-	if err := logger.Initialize("debug", "local"); err != nil {
-		return fmt.Errorf("logger initialization fail: %w", err)
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
+
+	// Close gRPC client on exit if initialized
+	if a.grpcClient != nil {
+		defer func() {
+			if err := a.grpcClient.Close(); err != nil {
+				logger.Log.Errorf("Failed to close gRPC client: %v", err)
+			}
+		}()
+	}
 
 	metricsChunks := make(chan []*m.Metrics)
 
@@ -234,6 +267,47 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 		logger.Log.Warn("empty metrics slice")
 		return nil
 	}
+
+	// Use gRPC if enabled
+	if a.useGRPC && a.grpcClient != nil {
+		return a.postMetricsGRPC(metrics)
+	}
+
+	// Otherwise use HTTP
+	return a.postMetricsHTTP(metrics)
+}
+
+func (a *Agent) postMetricsGRPC(metrics []*m.Metrics) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Convert to gauge and counter metrics
+	gauges := make([]*m.GaugeMetric, 0)
+	counters := make([]*m.CounterMetric, 0)
+
+	for _, metric := range metrics {
+		switch metric.MType {
+		case "gauge":
+			if metric.Value != nil {
+				gauges = append(gauges, &m.GaugeMetric{
+					Name:  metric.ID,
+					Value: *metric.Value,
+				})
+			}
+		case "counter":
+			if metric.Delta != nil {
+				counters = append(counters, &m.CounterMetric{
+					Name:  metric.ID,
+					Value: *metric.Delta,
+				})
+			}
+		}
+	}
+
+	return a.grpcClient.PushMetrics(ctx, gauges, counters)
+}
+
+func (a *Agent) postMetricsHTTP(metrics []*m.Metrics) error {
 	url := "http://" + a.serverAddr + "/updates/"
 
 	p, err := json.Marshal(metrics)
@@ -266,6 +340,12 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 		hshr := hasher.New(a.key)
 		req = req.SetHeader(hasher.HashHeaderKey, hshr.Hash(buff.Bytes()))
 	}
+
+	// Add X-Real-IP header with the host's IP address
+	if localIP := getLocalIP(); localIP != "" {
+		req = req.SetHeader("X-Real-IP", localIP)
+	}
+
 	req = req.SetBody(&buff)
 	res, err := req.Post(url)
 	if err != nil {
@@ -282,4 +362,26 @@ func (a *Agent) postMetrics(metrics []*m.Metrics) error {
 func getRandomFloat() float64 {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	return r.Float64()
+}
+
+// getLocalIP returns the non-loopback local IP of the host.
+// It returns an empty string if no suitable IP is found.
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		logger.Log.Warnf("Failed to get interface addresses: %v", err)
+		return ""
+	}
+
+	for _, address := range addrs {
+		// Check if the address is an IP address (not a network)
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+
+	logger.Log.Warn("No suitable local IP address found")
+	return ""
 }

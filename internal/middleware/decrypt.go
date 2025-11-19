@@ -18,13 +18,14 @@ func WithDecrypt(key *rsa.PrivateKey) func(http.Handler) http.Handler {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			decrypted, err := rsa.DecryptPKCS1v15(rand.Reader, key, data)
-			if err != nil {
-				logger.Log.Errorf("Failed to decrypt request body: %s", err.Error())
-				http.Error(w, "Internal encryption", http.StatusBadRequest)
-			}
-			r.Body = io.NopCloser(bytes.NewReader(decrypted))
-			h.ServeHTTP(w, r)
+		decrypted, err := rsa.DecryptPKCS1v15(rand.Reader, key, data)
+		if err != nil {
+			logger.Log.Errorf("Failed to decrypt request body: %s", err.Error())
+			http.Error(w, "Internal encryption", http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(decrypted))
+		h.ServeHTTP(w, r)
 		})
 	}
 }

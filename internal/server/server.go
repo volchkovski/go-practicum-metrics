@@ -15,6 +15,7 @@ import (
 
 	"github.com/volchkovski/go-practicum-metrics/internal/backup"
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
+	"github.com/volchkovski/go-practicum-metrics/internal/grpcserver"
 	"github.com/volchkovski/go-practicum-metrics/internal/httpserver"
 	"github.com/volchkovski/go-practicum-metrics/internal/logger"
 	"github.com/volchkovski/go-practicum-metrics/internal/routers"
@@ -61,13 +62,21 @@ func Run(cfg *configs.ServerConfig) (err error) {
 	}
 
 	privRSA, err := rsakey.GetPrivateKey(cfg.CryptoKey)
-	if err != nil && errors.Is(err, rsakey.ErrEmptyPath) {
+	if err != nil && !errors.Is(err, rsakey.ErrEmptyPath) {
 		logger.Log.Errorf("Failed to load rsa private key: %s", err.Error())
 		return
 	}
 
-	router := routers.NewMetricRouter(cfg.Key, privRSA, service)
+	router := routers.NewMetricRouter(cfg.Key, privRSA, cfg.TrustedSubnet, service)
 	hs := httpserver.New(router, cfg.Addr)
+
+	// Start gRPC server if address is configured
+	var gs *grpcserver.GRPCServer
+	if cfg.GRPCAddr != "" {
+		gs = grpcserver.New(cfg.GRPCAddr, service, logger.Log, cfg.TrustedSubnet)
+		gs.Start()
+		logger.Log.Infoln("gRPC server enabled on", cfg.GRPCAddr)
+	}
 
 	hs.Start()
 	b.Start()
@@ -75,18 +84,33 @@ func Run(cfg *configs.ServerConfig) (err error) {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
-	select {
-	case err = <-hs.Notify():
-		return
-	case err = <-b.Notify():
-		return
-	case s := <-interrupt:
-		logger.Log.Infoln("server - Run - signal: " + s.String())
-		return gracefulShutdown(hs, b)
+	// Wait for errors or interrupt
+	if gs != nil {
+		select {
+		case err = <-hs.Notify():
+			return gracefulShutdown(hs, gs, b)
+		case err = <-gs.Notify():
+			return gracefulShutdown(hs, gs, b)
+		case err = <-b.Notify():
+			return gracefulShutdown(hs, gs, b)
+		case s := <-interrupt:
+			logger.Log.Infoln("server - Run - signal: " + s.String())
+			return gracefulShutdown(hs, gs, b)
+		}
+	} else {
+		select {
+		case err = <-hs.Notify():
+			return
+		case err = <-b.Notify():
+			return
+		case s := <-interrupt:
+			logger.Log.Infoln("server - Run - signal: " + s.String())
+			return gracefulShutdown(hs, nil, b)
+		}
 	}
 }
 
-func gracefulShutdown(hs *httpserver.HTTPServer, b *backup.MetricsBackup) error {
+func gracefulShutdown(hs *httpserver.HTTPServer, gs *grpcserver.GRPCServer, b *backup.MetricsBackup) error {
 	logger.Log.Infoln("Starting graceful shutdown...")
 
 	// Создаем контекст с таймаутом для shutdown
@@ -97,6 +121,14 @@ func gracefulShutdown(hs *httpserver.HTTPServer, b *backup.MetricsBackup) error 
 	logger.Log.Infoln("Stopping backup and saving final metrics...")
 	if err := b.Stop(); err != nil {
 		logger.Log.Errorf("Error during backup final save: %v", err)
+	}
+
+	// Останавливаем gRPC сервер
+	if gs != nil {
+		logger.Log.Infoln("Shutting down gRPC server...")
+		if err := gs.Shutdown(); err != nil {
+			logger.Log.Errorf("Error during gRPC server shutdown: %v", err)
+		}
 	}
 
 	// Останавливаем HTTP сервер
