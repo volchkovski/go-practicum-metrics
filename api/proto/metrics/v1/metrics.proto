@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package metrics.v1;
+
+option go_package = "github.com/volchkovski/go-practicum-metrics/internal/grpcapi/pb";
+
+// MetricsService provides gRPC endpoints for metrics collection and retrieval.
+service MetricsService {
+  // PushGauge stores or updates a single gauge metric
+  rpc PushGauge(PushGaugeRequest) returns (PushGaugeResponse);
+  
+  // PushCounter stores or updates a single counter metric
+  rpc PushCounter(PushCounterRequest) returns (PushCounterResponse);
+  
+  // PushMetrics stores multiple metrics in a single batch operation
+  rpc PushMetrics(PushMetricsRequest) returns (PushMetricsResponse);
+  
+  // GetGauge retrieves a specific gauge metric by name
+  rpc GetGauge(GetGaugeRequest) returns (GetGaugeResponse);
+  
+  // GetCounter retrieves a specific counter metric by name
+  rpc GetCounter(GetCounterRequest) returns (GetCounterResponse);
+  
+  // GetAllMetrics retrieves all stored metrics
+  rpc GetAllMetrics(GetAllMetricsRequest) returns (GetAllMetricsResponse);
+  
+  // Ping checks the health of the service and database connection
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+// GaugeMetric represents a gauge-type metric with a floating-point value
+message GaugeMetric {
+  string name = 1;
+  double value = 2;
+}
+
+// CounterMetric represents a counter-type metric with an integer value
+message CounterMetric {
+  string name = 1;
+  int64 value = 2;
+}
+
+// PushGaugeRequest contains the gauge metric to be stored
+message PushGaugeRequest {
+  GaugeMetric metric = 1;
+}
+
+// PushGaugeResponse confirms the successful storage of a gauge metric
+message PushGaugeResponse {
+  bool success = 1;
+}
+
+// PushCounterRequest contains the counter metric to be stored
+message PushCounterRequest {
+  CounterMetric metric = 1;
+}
+
+// PushCounterResponse confirms the successful storage of a counter metric
+message PushCounterResponse {
+  bool success = 1;
+}
+
+// PushMetricsRequest contains multiple metrics to be stored in a batch
+message PushMetricsRequest {
+  repeated GaugeMetric gauges = 1;
+  repeated CounterMetric counters = 2;
+}
+
+// PushMetricsResponse confirms the successful storage of batch metrics
+message PushMetricsResponse {
+  bool success = 1;
+}
+
+// GetGaugeRequest specifies the name of the gauge metric to retrieve
+message GetGaugeRequest {
+  string name = 1;
+}
+
+// GetGaugeResponse contains the requested gauge metric
+message GetGaugeResponse {
+  GaugeMetric metric = 1;
+}
+
+// GetCounterRequest specifies the name of the counter metric to retrieve
+message GetCounterRequest {
+  string name = 1;
+}
+
+// GetCounterResponse contains the requested counter metric
+message GetCounterResponse {
+  CounterMetric metric = 1;
+}
+
+// GetAllMetricsRequest is an empty request to retrieve all metrics
+message GetAllMetricsRequest {}
+
+// GetAllMetricsResponse contains all stored metrics
+message GetAllMetricsResponse {
+  repeated GaugeMetric gauges = 1;
+  repeated CounterMetric counters = 2;
+}
+
+// PingRequest is an empty request to check service health
+message PingRequest {}
+
+// PingResponse confirms the service is healthy
+message PingResponse {
+  bool healthy = 1;
+}
+

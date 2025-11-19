@@ -13,12 +13,14 @@ import (
 )
 
 type AgentConfig struct {
-	ServerAddr string `env:"ADDRESS" json:"address"`
-	ReportIntr int    `env:"REPORT_INTERVAL" json:"report_interval"`
-	PollIntr   int    `env:"POLL_INTERVAL" json:"poll_interval"`
-	Key        string `env:"KEY" json:"key"`
-	RateLimit  int    `env:"RATE_LIMIT" json:"rate_limit"`
-	CryptoKey  string `env:"CRYPTO_KEY" json:"crypto_key"`
+	ServerAddr     string `env:"ADDRESS" json:"address"`
+	GRPCServerAddr string `env:"GRPC_ADDRESS" json:"grpc_address"`
+	UseGRPC        bool   `env:"USE_GRPC" json:"use_grpc"`
+	ReportIntr     int    `env:"REPORT_INTERVAL" json:"report_interval"`
+	PollIntr       int    `env:"POLL_INTERVAL" json:"poll_interval"`
+	Key            string `env:"KEY" json:"key"`
+	RateLimit      int    `env:"RATE_LIMIT" json:"rate_limit"`
+	CryptoKey      string `env:"CRYPTO_KEY" json:"crypto_key"`
 }
 
 func (ac *AgentConfig) UnmarshalJSON(data []byte) error {
@@ -57,6 +59,8 @@ func NewAgentConfig() (*AgentConfig, error) {
 func parseAgentFlags(cfg *AgentConfig, args []string) error {
 	configFieldsFlags := flag.NewFlagSet("fields", flag.ExitOnError)
 	configFieldsFlags.StringVar(&cfg.ServerAddr, "a", "localhost:8080", "server address and port to push")
+	configFieldsFlags.StringVar(&cfg.GRPCServerAddr, "g", "localhost:3200", "gRPC server address and port to push")
+	configFieldsFlags.BoolVar(&cfg.UseGRPC, "grpc", false, "use gRPC protocol instead of HTTP")
 	configFieldsFlags.IntVar(&cfg.ReportIntr, "r", 10, "each time to report metrics")
 	configFieldsFlags.IntVar(&cfg.PollIntr, "p", 2, "each time to poll metrics")
 	configFieldsFlags.StringVar(&cfg.Key, "k", "", "key for making hash")

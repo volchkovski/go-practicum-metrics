@@ -11,6 +11,7 @@ import (
 
 type ServerConfig struct {
 	Addr            string `env:"ADDRESS" json:"address"`
+	GRPCAddr        string `env:"GRPC_ADDRESS" json:"grpc_address"`
 	StoreIntr       int    `env:"STORE_INTERVAL" json:"store_interval"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH" json:"store_file"`
 	Restore         bool   `env:"RESTORE" json:"restore"`
@@ -56,6 +57,7 @@ func NewServerConfig() (*ServerConfig, error) {
 func parseServerConfigFields(cfg *ServerConfig, args []string) error {
 	configFieldsFlags := flag.NewFlagSet("fields", flag.ExitOnError)
 	configFieldsFlags.StringVar(&cfg.Addr, "a", ":8080", "address and port to run server")
+	configFieldsFlags.StringVar(&cfg.GRPCAddr, "g", ":3200", "address and port to run gRPC server")
 	configFieldsFlags.IntVar(&cfg.StoreIntr, "i", 300, "metrics saves to file each time after this interval")
 	configFieldsFlags.StringVar(&cfg.FileStoragePath, "f", `./metrics.json`, "file path for metrics saving")
 	configFieldsFlags.BoolVar(&cfg.Restore, "r", false, "load dumped metrics at server start")

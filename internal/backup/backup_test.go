@@ -293,3 +293,214 @@ func TestMetricsBackup_Restore(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestMetricsBackup_DumpMetrics(t *testing.T) {
+	t.Run("dumps metrics successfully", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "dump_test.json")
+
+		gauges := []*models.GaugeMetric{
+			{Name: "dump_gauge", Value: 42.42},
+		}
+		counters := []*models.CounterMetric{
+			{Name: "dump_counter", Value: 123},
+		}
+
+		mgp := &mockMetricsGetPusher{
+			gauges:   gauges,
+			counters: counters,
+		}
+
+		backup := NewMetricsBackup(mgp, testFile, 0)
+
+		err := backup.dumpMetrics()
+		assert.NoError(t, err)
+
+		// Verify file was created with correct data
+		assert.True(t, IsFileExists(testFile))
+
+		file, err := os.Open(testFile)
+		require.NoError(t, err)
+		defer file.Close()
+
+		var loadedMetrics metrics
+		err = json.NewDecoder(file).Decode(&loadedMetrics)
+		require.NoError(t, err)
+
+		assert.Len(t, loadedMetrics.Gauges, 1)
+		assert.Equal(t, "dump_gauge", loadedMetrics.Gauges[0].Name)
+		assert.Len(t, loadedMetrics.Counters, 1)
+		assert.Equal(t, "dump_counter", loadedMetrics.Counters[0].Name)
+	})
+
+	t.Run("handles get gauge error", func(t *testing.T) {
+		mgp := &mockMetricsGetPusher{
+			getErr: assert.AnError,
+		}
+
+		backup := NewMetricsBackup(mgp, "test.json", 0)
+
+		err := backup.dumpMetrics()
+		assert.Error(t, err)
+	})
+
+	t.Run("handles get counter error", func(t *testing.T) {
+		mgp := &mockMetricsGetPusher{
+			gauges: []*models.GaugeMetric{},
+			getErr: assert.AnError,
+		}
+
+		backup := NewMetricsBackup(mgp, "test.json", 0)
+
+		// Set getErr to nil for first call, error for second
+		mgp.getErr = nil
+		backup.mgp = &mockMetricsGetPusher{
+			gauges: []*models.GaugeMetric{},
+			getErr: assert.AnError,
+		}
+
+		err := backup.dumpMetrics()
+		assert.Error(t, err)
+	})
+}
+
+func TestMetricsBackup_Stop(t *testing.T) {
+	t.Run("stops backup and performs final dump", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "stop_test.json")
+
+		mgp := &mockMetricsGetPusher{
+			gauges: []*models.GaugeMetric{
+				{Name: "final_gauge", Value: 99.99},
+			},
+			counters: []*models.CounterMetric{
+				{Name: "final_counter", Value: 999},
+			},
+		}
+
+		backup := NewMetricsBackup(mgp, testFile, 1) // short interval
+
+		err := backup.Stop()
+		assert.NoError(t, err)
+
+		// Verify final dump was written
+		assert.True(t, IsFileExists(testFile))
+	})
+
+	t.Run("handles dump error on stop", func(t *testing.T) {
+		mgp := &mockMetricsGetPusher{
+			getErr: assert.AnError,
+		}
+
+		backup := NewMetricsBackup(mgp, "test.json", 0)
+
+		err := backup.Stop()
+		assert.Error(t, err)
+	})
+}
+
+func TestMetricsBackup_Start(t *testing.T) {
+	t.Run("starts periodic backup", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "start_test.json")
+
+		mgp := &mockMetricsGetPusher{
+			gauges: []*models.GaugeMetric{
+				{Name: "periodic_gauge", Value: 11.11},
+			},
+			counters: []*models.CounterMetric{},
+		}
+
+		// Use very short interval for testing
+		backup := NewMetricsBackup(mgp, testFile, 1) // 1 second
+
+		backup.Start()
+
+		// Wait for at least one tick
+		time.Sleep(1500 * time.Millisecond)
+
+		// Stop the backup
+		err := backup.Stop()
+		assert.NoError(t, err)
+
+		// Verify file was created
+		assert.True(t, IsFileExists(testFile))
+	})
+
+	t.Run("stops on context cancel", func(t *testing.T) {
+		mgp := &mockMetricsGetPusher{
+			gauges:   []*models.GaugeMetric{},
+			counters: []*models.CounterMetric{},
+		}
+
+		backup := NewMetricsBackup(mgp, "/tmp/cancel_test.json", 1)
+
+		backup.Start()
+
+		// Cancel immediately
+		backup.cancel()
+
+		// Wait a bit to ensure goroutine exits
+		time.Sleep(100 * time.Millisecond)
+
+		// Notify channel should be closed
+		select {
+		case _, ok := <-backup.Notify():
+			assert.False(t, ok, "channel should be closed")
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("timeout waiting for channel close")
+		}
+	})
+
+	t.Run("sends error on dump failure", func(t *testing.T) {
+		mgp := &mockMetricsGetPusher{
+			getErr: assert.AnError,
+		}
+
+		backup := NewMetricsBackup(mgp, "test.json", 1) // 1 second
+
+		backup.Start()
+
+		// Wait for tick and error
+		select {
+		case err := <-backup.Notify():
+			assert.Error(t, err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("timeout waiting for error")
+		}
+	})
+}
+
+func TestMetricsBackup_Restore_InvalidJSON(t *testing.T) {
+	t.Run("handles invalid JSON in file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "invalid.json")
+
+		// Create file with invalid JSON
+		err := os.WriteFile(testFile, []byte("not valid json"), 0644)
+		require.NoError(t, err)
+
+		mgp := &mockMetricsGetPusher{}
+		backup := NewMetricsBackup(mgp, testFile, 0)
+
+		err = backup.Restore()
+		assert.Error(t, err)
+	})
+
+	t.Run("handles empty file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "empty.json")
+
+		// Create empty file
+		file, err := os.Create(testFile)
+		require.NoError(t, err)
+		err = file.Close()
+		require.NoError(t, err)
+
+		mgp := &mockMetricsGetPusher{}
+		backup := NewMetricsBackup(mgp, testFile, 0)
+
+		err = backup.Restore()
+		assert.Error(t, err) // Should fail to decode empty JSON
+	})
+}

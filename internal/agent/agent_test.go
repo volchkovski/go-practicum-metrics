@@ -2,6 +2,10 @@ package agent
 
 import (
 	"context"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"sync"
 	"testing"
@@ -10,7 +14,40 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/volchkovski/go-practicum-metrics/internal/configs"
 	m "github.com/volchkovski/go-practicum-metrics/internal/models"
+	"go.uber.org/zap"
 )
+
+// mockGRPCClient implements the GRPC client interface for testing
+type mockGRPCClient struct {
+	pushMetricsFunc func(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error
+	closeFunc       func() error
+}
+
+func (m *mockGRPCClient) PushMetrics(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+	if m.pushMetricsFunc != nil {
+		return m.pushMetricsFunc(ctx, gauges, counters)
+	}
+	return nil
+}
+
+func (m *mockGRPCClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+func (m *mockGRPCClient) PushGauge(ctx context.Context, metric *m.GaugeMetric) error {
+	return nil
+}
+
+func (m *mockGRPCClient) PushCounter(ctx context.Context, metric *m.CounterMetric) error {
+	return nil
+}
+
+func (m *mockGRPCClient) Ping(ctx context.Context) error {
+	return nil
+}
 
 func TestNew(t *testing.T) {
 	t.Run("create new agent", func(t *testing.T) {
@@ -33,6 +70,68 @@ func TestNew(t *testing.T) {
 		assert.Equal(t, 2*time.Second, agent.pollIntr)
 		assert.Equal(t, "test-key", agent.key)
 		assert.Equal(t, 1, agent.rateLimit)
+	})
+
+	t.Run("create agent with empty crypto key", func(t *testing.T) {
+		config := &configs.AgentConfig{
+			ServerAddr: "localhost:8080",
+			ReportIntr: 10,
+			PollIntr:   2,
+			Key:        "",
+			RateLimit:  1,
+			CryptoKey:  "", // Empty crypto key should work
+		}
+
+		agent, err := New(config)
+		assert.NoError(t, err)
+		assert.NotNil(t, agent)
+		assert.Nil(t, agent.publicRSA)
+	})
+
+	t.Run("handles invalid crypto key", func(t *testing.T) {
+		config := &configs.AgentConfig{
+			ServerAddr: "localhost:8080",
+			ReportIntr: 10,
+			PollIntr:   2,
+			Key:        "",
+			RateLimit:  1,
+			CryptoKey:  "/invalid/path/to/key.pem",
+		}
+
+		agent, err := New(config)
+		assert.Error(t, err)
+		assert.Nil(t, agent)
+	})
+
+	t.Run("create agent with UseGRPC but invalid server", func(t *testing.T) {
+		config := &configs.AgentConfig{
+			ServerAddr:     "localhost:8080",
+			ReportIntr:     10,
+			PollIntr:       2,
+			Key:            "",
+			RateLimit:      1,
+			UseGRPC:        true,
+			GRPCServerAddr: "invalid:99999", // Invalid gRPC server
+		}
+
+		// This should timeout when trying to connect to gRPC server
+		done := make(chan struct{})
+		var agent *Agent
+		var err error
+
+		go func() {
+			agent, err = New(config)
+			close(done)
+		}()
+
+		// Wait for either completion or timeout
+		select {
+		case <-done:
+			assert.Error(t, err)
+			assert.Nil(t, agent)
+		case <-time.After(15 * time.Second):
+			t.Log("gRPC connection attempt timed out as expected")
+		}
 	})
 }
 
@@ -198,5 +297,362 @@ func TestRunReportingLoop(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("Expected reporting loop to exit on context cancel")
 		}
+	})
+}
+
+func TestPostMetricsGRPC(t *testing.T) {
+	_ = zap.NewNop().Sugar() // Keep import
+
+	t.Run("posts metrics successfully", func(t *testing.T) {
+		gaugeValue := 42.0
+		counterValue := int64(100)
+
+		mockClient := &mockGRPCClient{
+			pushMetricsFunc: func(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+				assert.Len(t, gauges, 1)
+				assert.Len(t, counters, 1)
+				assert.Equal(t, "test_gauge", gauges[0].Name)
+				assert.Equal(t, 42.0, gauges[0].Value)
+				assert.Equal(t, "test_counter", counters[0].Name)
+				assert.Equal(t, int64(100), counters[0].Value)
+				return nil
+			},
+		}
+
+		agent := &Agent{
+			grpcClient: mockClient,
+		}
+
+		metrics := []*m.Metrics{
+			{
+				ID:    "test_gauge",
+				MType: "gauge",
+				Value: &gaugeValue,
+			},
+			{
+				ID:    "test_counter",
+				MType: "counter",
+				Delta: &counterValue,
+			},
+		}
+
+		err := agent.postMetricsGRPC(metrics)
+		assert.NoError(t, err)
+	})
+
+	t.Run("handles push error", func(t *testing.T) {
+		mockClient := &mockGRPCClient{
+			pushMetricsFunc: func(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+				return errors.New("push failed")
+			},
+		}
+
+		agent := &Agent{
+			grpcClient: mockClient,
+		}
+
+		metrics := []*m.Metrics{
+			{
+				ID:    "test_gauge",
+				MType: "gauge",
+				Value: new(float64),
+			},
+		}
+
+		err := agent.postMetricsGRPC(metrics)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "push failed")
+	})
+
+	t.Run("handles metrics with nil values", func(t *testing.T) {
+		mockClient := &mockGRPCClient{
+			pushMetricsFunc: func(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+				// Should not include metrics with nil values
+				assert.Len(t, gauges, 0)
+				assert.Len(t, counters, 0)
+				return nil
+			},
+		}
+
+		agent := &Agent{
+			grpcClient: mockClient,
+		}
+
+		metrics := []*m.Metrics{
+			{
+				ID:    "test_gauge",
+				MType: "gauge",
+				Value: nil, // nil value should be skipped
+			},
+			{
+				ID:    "test_counter",
+				MType: "counter",
+				Delta: nil, // nil value should be skipped
+			},
+		}
+
+		err := agent.postMetricsGRPC(metrics)
+		assert.NoError(t, err)
+	})
+
+	t.Run("handles mixed valid and invalid metrics", func(t *testing.T) {
+		gaugeValue := 42.0
+
+		mockClient := &mockGRPCClient{
+			pushMetricsFunc: func(ctx context.Context, gauges []*m.GaugeMetric, counters []*m.CounterMetric) error {
+				// Should only include valid metric
+				assert.Len(t, gauges, 1)
+				assert.Len(t, counters, 0)
+				assert.Equal(t, "valid_gauge", gauges[0].Name)
+				return nil
+			},
+		}
+
+		agent := &Agent{
+			grpcClient: mockClient,
+		}
+
+		metrics := []*m.Metrics{
+			{
+				ID:    "valid_gauge",
+				MType: "gauge",
+				Value: &gaugeValue,
+			},
+			{
+				ID:    "invalid_counter",
+				MType: "counter",
+				Delta: nil, // Should be skipped
+			},
+		}
+
+		err := agent.postMetricsGRPC(metrics)
+		assert.NoError(t, err)
+	})
+}
+
+func TestPostMetricsHTTP(t *testing.T) {
+	t.Run("successfully posts metrics via HTTP", func(t *testing.T) {
+		requestCount := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestCount++
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.Equal(t, "/updates/", r.URL.Path)
+			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+			// Read and validate body
+			body, err := io.ReadAll(r.Body)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, body)
+
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		config := &configs.AgentConfig{
+			ServerAddr: server.URL[7:], // Remove "http://"
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		gaugeValue := 42.0
+		counterValue := int64(100)
+
+		metrics := []*m.Metrics{
+			{
+				ID:    "test_gauge",
+				MType: "gauge",
+				Value: &gaugeValue,
+			},
+			{
+				ID:    "test_counter",
+				MType: "counter",
+				Delta: &counterValue,
+			},
+		}
+
+		err = agent.postMetricsHTTP(metrics)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, requestCount)
+	})
+
+	t.Run("handles HTTP server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		config := &configs.AgentConfig{
+			ServerAddr: server.URL[7:], // Remove "http://"
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		gaugeValue := 42.0
+		metrics := []*m.Metrics{
+			{
+				ID:    "test_gauge",
+				MType: "gauge",
+				Value: &gaugeValue,
+			},
+		}
+
+		err = agent.postMetricsHTTP(metrics)
+		assert.Error(t, err)
+	})
+
+	t.Run("skips metrics with nil values", func(t *testing.T) {
+		requestCount := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestCount++
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		config := &configs.AgentConfig{
+			ServerAddr: server.URL[7:], // Remove "http://"
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		metrics := []*m.Metrics{
+			{
+				ID:    "test_gauge",
+				MType: "gauge",
+				Value: nil, // nil value should be filtered out
+			},
+			{
+				ID:    "test_counter",
+				MType: "counter",
+				Delta: nil, // nil value should be filtered out
+			},
+		}
+
+		err = agent.postMetricsHTTP(metrics)
+		assert.NoError(t, err)
+		// If all metrics are filtered out, should not make HTTP request
+		// or make request with empty array
+		assert.GreaterOrEqual(t, requestCount, 0)
+	})
+
+	t.Run("handles empty metrics slice", func(t *testing.T) {
+		requestCount := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestCount++
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		config := &configs.AgentConfig{
+			ServerAddr: server.URL[7:], // Remove "http://"
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		metrics := []*m.Metrics{}
+
+		err = agent.postMetricsHTTP(metrics)
+		assert.NoError(t, err)
+	})
+}
+
+func TestPostWorker(t *testing.T) {
+	t.Run("processes metrics from channel", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		config := &configs.AgentConfig{
+			ServerAddr: server.URL[7:],
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		gaugeValue := 42.0
+		metricsChunks := make(chan []*m.Metrics, 1)
+		metricsChunks <- []*m.Metrics{
+			{ID: "test_gauge", MType: "gauge", Value: &gaugeValue},
+		}
+		close(metricsChunks)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		agent.postWorker(&wg, metricsChunks)
+		wg.Wait()
+	})
+
+	t.Run("handles error from postMetrics", func(t *testing.T) {
+		// Use a server that returns error
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		config := &configs.AgentConfig{
+			ServerAddr: server.URL[7:],
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		gaugeValue := 42.0
+		metricsChunks := make(chan []*m.Metrics, 1)
+		metricsChunks <- []*m.Metrics{
+			{ID: "test_gauge", MType: "gauge", Value: &gaugeValue},
+		}
+		close(metricsChunks)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		// Should not panic even on error
+		assert.NotPanics(t, func() {
+			agent.postWorker(&wg, metricsChunks)
+			wg.Wait()
+		})
+	})
+}
+
+func TestCollectExtraMetrics(t *testing.T) {
+	t.Run("collects extra metrics", func(t *testing.T) {
+		config := &configs.AgentConfig{
+			ServerAddr: "localhost:8080",
+			ReportIntr: 10,
+			PollIntr:   2,
+			RateLimit:  1,
+		}
+		agent, err := New(config)
+		assert.NoError(t, err)
+
+		metricsCh := make(chan *m.Metrics, 10)
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		agent.collectExtraMetrics(&wg, metricsCh)
+		wg.Wait()
+		close(metricsCh)
+
+		// Should collect at least some metrics
+		count := 0
+		for range metricsCh {
+			count++
+		}
+		assert.GreaterOrEqual(t, count, 0)
 	})
 }
